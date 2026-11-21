@@ -15,7 +15,8 @@ IMAGE := $(BUILD)/udos.img
 ROOTFS := $(BUILD)/rootfs
 
 KERNEL_SRCS := kernel/main.c kernel/vga.c kernel/gdt.c kernel/idt.c kernel/exception.c kernel/pic.c \
-               kernel/timer.c kernel/keyboard.c kernel/kbd_map.c kernel/charbuf.c
+               kernel/timer.c kernel/keyboard.c kernel/kbd_map.c kernel/charbuf.c kernel/pmm.c kernel/heap.c \
+               kernel/memory.c
 KERNEL_HEADERS := $(wildcard kernel/*.h)
 KERNEL_DEFINES ?=
 KERNEL_OBJS := $(patsubst kernel/%.c,$(BUILD)/kernel/%.o,$(KERNEL_SRCS))
@@ -87,7 +88,8 @@ check: $(IMAGE) $(UDFSCK)
 	$(UDFSCK) $(IMAGE)
 	$(UDFSCK) -x sys/boot/kernel $(IMAGE) | cmp - $(BUILD)/kernel.bin
 
-TESTS := $(BUILD)/tests/test_kbd_map $(BUILD)/tests/test_charbuf $(BUILD)/tests/test_idt
+TESTS := $(BUILD)/tests/test_kbd_map $(BUILD)/tests/test_charbuf $(BUILD)/tests/test_idt \
+         $(BUILD)/tests/test_pmm $(BUILD)/tests/test_heap
 
 $(BUILD)/tests/test_kbd_map: tests/test_kbd_map.c kernel/kbd_map.c kernel/kbd_map.h
 	mkdir -p $(dir $@)
@@ -100,6 +102,14 @@ $(BUILD)/tests/test_charbuf: tests/test_charbuf.c kernel/charbuf.c kernel/charbu
 $(BUILD)/tests/test_idt: tests/test_idt.c kernel/idt.h
 	mkdir -p $(dir $@)
 	$(HOSTCC) $(HOSTCFLAGS) -Ikernel -o $@ tests/test_idt.c
+
+$(BUILD)/tests/test_pmm: tests/test_pmm.c kernel/pmm.c kernel/pmm.h
+	mkdir -p $(dir $@)
+	$(HOSTCC) $(HOSTCFLAGS) -Ikernel -o $@ tests/test_pmm.c kernel/pmm.c
+
+$(BUILD)/tests/test_heap: tests/test_heap.c kernel/heap.c kernel/heap.h
+	mkdir -p $(dir $@)
+	$(HOSTCC) $(HOSTCFLAGS) -Ikernel -o $@ tests/test_heap.c kernel/heap.c
 
 test: $(TESTS)
 	@for t in $(TESTS); do $$t || exit 1; done

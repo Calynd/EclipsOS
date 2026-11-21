@@ -3,6 +3,7 @@ ENTRY(udk_main)
 SECTIONS
 {
     . = 0x100000;
+    __kernel_start = .;
 
     .text : ALIGN(16) {
         *(.text.entry)
@@ -23,6 +24,9 @@ SECTIONS
         *(COMMON)
         __bss_end = .;
     }
+
+    . = ALIGN(4096);
+    __kernel_end = .;
 
     /DISCARD/ : {
         *(.comment)

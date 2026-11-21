@@ -2,6 +2,8 @@
 
 UDOS (Unified Disk Operating System) is an independent operating system with its own architecture, formats and identity. It is not an MS-DOS clone and not a UNIX-like system.
 
+Repository: https://github.com/Unified-Systems-Initiative/UDOS
+
 ## Status markers
 
 Every statement in these documents carries one of these states:
@@ -18,6 +20,7 @@ Every statement in these documents carries one of these states:
 |---|---|
 | [00-overview.md](00-overview.md) | Identity, components, directory layout, boot flow |
 | [decisions.md](decisions.md) | Decision log and list of pending decisions |
+| [customization.md](customization.md) | Replaceable components and the rules that keep them replaceable |
 | [roadmap.md](roadmap.md) | Order of the work, and the decisions needed before each step |
 | [specs/namespaces.md](specs/namespaces.md) | Namespace and resource addressing |
 | [specs/udbl.md](specs/udbl.md) | Boot loader interface, boot stages, handoff to the kernel |

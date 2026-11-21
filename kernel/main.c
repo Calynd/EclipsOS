@@ -4,6 +4,7 @@
 #include "idt.h"
 #include "interrupt.h"
 #include "keyboard.h"
+#include "memory.h"
 #include "pic.h"
 #include "timer.h"
 #include "udbl.h"
@@ -126,6 +127,28 @@ void udk_main(const struct udbl_info *info)
     idt_init();
     exception_init();
     vga_puts("UDK: IDT LOADED, EXCEPTIONS 0-31 HANDLED\n");
+
+    if (memory_init(info) != 0) {
+        vga_puts("UDK: MEMORY INITIALIZATION FAILED\n");
+        halt();
+    }
+    vga_puts("UDK: PHYSICAL MEMORY ");
+    vga_put_dec(memory_free_frames());
+    vga_puts(" FRAMES FREE (");
+    vga_put_dec(memory_free_frames() * PMM_FRAME_SIZE / 1024);
+    vga_puts(" KIB)\n");
+    vga_puts("UDK: KERNEL HEAP ");
+    vga_put_dec(memory_heap_size() / 1024);
+    vga_puts(" KIB\n");
+
+    int memory_result = memory_self_test();
+    if (memory_result != 0) {
+        vga_puts("UDK: MEMORY SELF-TEST FAILED, CODE ");
+        vga_put_dec((uint64_t)memory_result);
+        vga_puts("\n");
+        halt();
+    }
+    vga_puts("UDK: MEMORY SELF-TEST OK\n");
 
     pic_init();
     vga_puts("UDK: PIC REMAPPED TO VECTORS 32-47\n");

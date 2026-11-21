@@ -25,7 +25,7 @@ Consequences:
 - The flat binary does not contain `.bss`. The kernel zeroes it at the start of `udk_main`, using `__bss_start` and `__bss_end` from the linker script.
 - The kernel image can have at most 896 sectors (see [udbl.md](udbl.md)).
 
-## Current state (milestone 3)
+## Current state (milestone 4)
 
 | File | Role |
 |---|---|
@@ -40,6 +40,9 @@ Consequences:
 | `kernel/keyboard.c`, `kernel/keyboard.h` | PS/2 keyboard interrupt handler and input buffer |
 | `kernel/kbd_map.c`, `kernel/kbd_map.h` | Scancode to character translation (pure logic) |
 | `kernel/charbuf.c`, `kernel/charbuf.h` | Ring buffer for characters (pure logic) |
+| `kernel/pmm.c`, `kernel/pmm.h` | Physical frame allocator (bitmap, pure logic) |
+| `kernel/heap.c`, `kernel/heap.h` | Kernel heap allocator (pure logic) |
+| `kernel/memory.c`, `kernel/memory.h` | Builds the allocators from the UDBL memory map. `kmalloc`, `kfree`, frame allocation, `phys_to_virt`, self-test. |
 | `kernel/io.h`, `kernel/interrupt.h` | Port I/O, interrupt frame and `sti`/`cli`/`hlt` helpers |
 
 ### Initialization order
@@ -48,10 +51,37 @@ Consequences:
 2. Print boot drive and memory summary.
 3. Load the kernel GDT and reload the segment registers.
 4. Load the IDT and install the exception handlers.
-5. Remap the PIC and mask every IRQ except the cascade.
-6. Start the timer (100 Hz) and unmask IRQ 0.
-7. Initialize the keyboard and unmask IRQ 1.
-8. Enable interrupts.
+5. Initialize physical memory and the heap, and run the memory self-test.
+6. Remap the PIC and mask every IRQ except the cascade.
+7. Start the timer (100 Hz) and unmask IRQ 0.
+8. Initialize the keyboard and unmask IRQ 1.
+9. Enable interrupts.
+
+### Memory management
+
+**PROPOSED.**
+
+| Item | Behavior |
+|---|---|
+| Frames | 4 KiB, tracked with a bitmap (1 bit per frame, set means used). |
+| Managed range | From 1 MiB up to 1 GiB. Memory below 1 MiB (BIOS data, UDBL structures, the boot stack and the current page tables) is never handed out. Memory above 1 GiB is not reachable until the kernel has its own page tables. |
+| Source of free memory | The usable entries of the UDBL memory map, clipped to the managed range. |
+| Reserved | The kernel image, from `__kernel_start` to `__kernel_end` (end of `.bss`, page aligned). |
+| Allocation | Next-fit for single frames, first-fit for contiguous runs. A failed allocation returns `PMM_NO_FRAME`. Freeing detects unaligned, out of range and double frees. |
+| Kernel heap | 1 MiB of contiguous frames. First-fit blocks with 16-byte headers and 16-byte alignment, split on allocation and merged on free. |
+| Address conversion | `phys_to_virt` and `virt_to_phys` (identity today). |
+
+At boot the self-test allocates and frees frames, writes to them, checks that a double free is rejected and exercises `kmalloc` and `kfree`. It prints `UDK: MEMORY SELF-TEST OK`, or `UDK: MEMORY SELF-TEST FAILED, CODE n` and halts.
+
+With the default QEMU memory (128 MB) the expected lines are:
+
+```text
+UDK: PHYSICAL MEMORY 32212 FRAMES FREE (128848 KIB)
+UDK: KERNEL HEAP 1024 KIB
+UDK: MEMORY SELF-TEST OK
+```
+
+The count comes from the second usable region of the memory map (`0x100000` to `0x7FE0000`, 32480 frames) minus 12 frames of kernel image and 256 frames of heap.
 
 ### Interrupts
 
@@ -92,7 +122,7 @@ After the initialization lines the kernel shows the prompt `> ` and echoes what 
 
 ### Tests
 
-`make test` builds and runs host tests for the logic that does not depend on the hardware: `tests/test_kbd_map.c` (translation, Shift, Caps Lock, release and extended codes), `tests/test_charbuf.c` (order, capacity, wraparound) and `tests/test_idt.c` (byte layout of an IDT entry).
+`make test` builds and runs host tests for the logic that does not depend on the hardware: `tests/test_kbd_map.c` (translation, Shift, Caps Lock, release and extended codes), `tests/test_charbuf.c` (order, capacity, wraparound) and `tests/test_idt.c` (byte layout of an IDT entry), `tests/test_pmm.c` (frame allocator: ranges, rounding, exhaustion, double free, contiguous runs) and `tests/test_heap.c` (alignment, splitting, merging, double free, exhaustion and a randomized stress run).
 
 ## Known limits
 
@@ -100,14 +130,15 @@ After the initialization lines the kernel shows the prompt `> ` and echoes what 
 - Only the 8259 PIC is used. APIC and multiple processors are not supported.
 - The keyboard code does not talk to the controller (no LEDs, no layout selection, no error handling).
 - Exceptions are fatal. Nothing is recovered yet.
-- Status: ran correctly in QEMU (GDT, IDT, PIC, timer with the uptime display, keyboard echo). The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
+- The physical memory manager sees only the first 1 GiB, and the heap does not grow.
+- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
 
 ## Open items
 
 | Item | Status |
 |---|---|
 | Kernel architecture | OPEN |
-| Memory management (physical allocator, own page tables) | OPEN |
+| Own page tables and the kernel memory layout | OPEN |
 | Processes, scheduling and system calls | OPEN |
 | Keyboard layout and a key repeat policy | OPEN |
 | Drivers architecture | OPEN |

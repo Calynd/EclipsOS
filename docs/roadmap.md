@@ -12,6 +12,10 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 
 **DECIDED (D-016).** The uptime display (`UP hh:mm:ss`) in the top right corner of the screen is never removed. Every console, shell or screen redesign keeps it.
 
+**DECIDED (D-019).** The uptime display is part of UDSH. Until UDSH exists, UDK draws it. See [customization.md](customization.md).
+
+**DECIDED (D-020).** The current user is shown in the same top right corner, and the prompt does not carry the user name. How the corner is shared between the user and the uptime is **OPEN**. A user model is needed for this, see D7 below.
+
 ## Done
 
 | Milestone | Result |
@@ -20,6 +24,7 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 | 2 | Kernel in C, memory map, long mode |
 | UDFS | UDFS v1, `mkudfs`, `udfsck`, kernel loaded by path from the file system, animated boot dots |
 | 3 | GDT, IDT, exceptions, PIC, timer, keyboard, uptime display |
+| 4 | Physical memory manager and kernel heap |
 
 ## Next: processes and what they need
 
@@ -27,7 +32,6 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 
 | Milestone | Content | Visible result | Needs decision |
 |---|---|---|---|
-| 4 | Physical memory manager built from the UDBL memory map, and a kernel heap | The kernel prints free memory and allocates and frees pages | None. Serves any architecture. |
 | 5 | Own page tables and a virtual memory interface | The kernel runs on its own mappings and reports page faults with the address | D3 |
 | 6 | TSS, ring 3 and the system call entry | A hard-coded function runs in user mode and calls the kernel | D4 |
 | 7 | UDE format and loader | A UDE image embedded in the kernel runs in user mode | D6 |
@@ -48,5 +52,7 @@ Console input and output for user programs (system calls to read the keyboard an
 | D5 | How programs refer to resources | **Handles opened by namespace path:** the kernel resolves `disk:0//...`, `ram:0//...`, `net:0//...` and returns a handle. **Capabilities:** the program receives handles from its parent and cannot name anything else. | Handles opened by namespace path, with permissions checked by the kernel. | 9 |
 | D6 | UDE layout | Fixed load address versus relocatable code. Sizes of stack and zero-initialized data. Which header fields are mandatory. | Fixed load address at first, with a header field reserved for relocation. | 7 |
 | D7 | Permission model | Users, `root`, and what is checked (files, namespaces, processes). The UDFS inode has 16 reserved bytes for it. | Postpone until UDSH works. | 10 |
+
+UDOS must stay customizable (D-018). The contracts that each milestone creates are described in [customization.md](customization.md).
 
 Other open items, such as the keyboard layout (US today) and whether file names ignore case, are in [decisions.md](decisions.md).

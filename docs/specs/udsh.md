@@ -4,6 +4,8 @@
 
 **DECIDED.** The prompt is the current namespace path followed by `>`, for example `disk:0//usr/root>`. See [namespaces.md](namespaces.md).
 
+**DECIDED (D-020).** The prompt does not contain the user name. The current user is shown in the top right corner of the screen, not in the prompt.
+
 ## Commands
 
 **DECIDED** names. Syntax, flags and exact behavior are **OPEN**.
