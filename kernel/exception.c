@@ -65,6 +65,15 @@ static __attribute__((noreturn)) void exception_report(unsigned int vector, int 
 
         __asm__ volatile("movq %%cr2, %0" : "=r"(address));
         report_line("UDK: FAULT ADDRESS ", address);
+        vga_puts("UDK: ");
+        vga_puts((error_code & 1) ? "PROTECTION VIOLATION" : "PAGE NOT PRESENT");
+        vga_puts((error_code & 2) ? ", WRITE" : ", READ");
+        vga_puts((error_code & 4) ? ", USER" : ", SUPERVISOR");
+        if (error_code & 8)
+            vga_puts(", RESERVED BIT SET");
+        if (error_code & 16)
+            vga_puts(", INSTRUCTION FETCH");
+        vga_puts("\n");
     }
     vga_puts("UDK: SYSTEM HALTED\n");
     for (;;)

@@ -25,6 +25,7 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 | UDFS | UDFS v1, `mkudfs`, `udfsck`, kernel loaded by path from the file system, animated boot dots |
 | 3 | GDT, IDT, exceptions, PIC, timer, keyboard, uptime display |
 | 4 | Physical memory manager and kernel heap |
+| 5 | Virtual memory manager and own kernel page tables (identity mapped, kernel not moved) |
 
 ## Next: processes and what they need
 
@@ -32,7 +33,7 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 
 | Milestone | Content | Visible result | Needs decision |
 |---|---|---|---|
-| 5 | Own page tables and a virtual memory interface | The kernel runs on its own mappings and reports page faults with the address | D3 |
+| 5b | Move the kernel to the higher half | `phys_to_virt` and the kernel link address change in one place each, and the lower half is free for programs | D3 |
 | 6 | TSS, ring 3 and the system call entry | A hard-coded function runs in user mode and calls the kernel | D4 |
 | 7 | UDE format and loader | A UDE image embedded in the kernel runs in user mode | D6 |
 | 8 | Process table, scheduler and process exit | Two processes alternate on screen | D1, D2 |

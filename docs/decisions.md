@@ -72,6 +72,9 @@
 | P-019 | The physical memory manager uses 4 KiB frames and a bitmap. It manages only memory from 1 MiB up to 1 GiB, which is the part the kernel can reach with the identity mapping left by UDBL. |
 | P-020 | The kernel heap is 1 MiB, taken from the physical memory manager, with a first-fit allocator and merging of free blocks. |
 | P-021 | Kernel code converts between physical and virtual addresses only through `phys_to_virt` and `virt_to_phys`, so that a different memory layout (D3 in the roadmap) changes one place. |
+| P-022 | The virtual memory manager uses 4-level page tables with 4 KiB pages and 2 MiB large pages. It reaches memory only through operations supplied by the caller, so it can be tested on the host. |
+| P-023 | UDK runs on its own page tables: an identity map of the first 1 GiB with 2 MiB pages, writable, without separation of code and data. The tables left by UDBL are abandoned. |
+| P-024 | `vmm_unmap` does not free empty page tables. They are freed when the address space is destroyed. |
 | P-006 | UDBL maps the first 1 GiB with 2 MiB pages at handoff. The kernel builds its own page tables. |
 | P-007 | The number of dots per boot line is fixed per build (`BOOT_DOTS` in the Makefile, default 18, as in the visual target). With one dot per second the kernel line takes about 18 seconds. |
 

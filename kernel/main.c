@@ -8,6 +8,7 @@
 #include "pic.h"
 #include "timer.h"
 #include "udbl.h"
+#include "vm.h"
 #include "vga.h"
 
 #define TIMER_HZ 100u
@@ -150,6 +151,23 @@ void udk_main(const struct udbl_info *info)
     }
     vga_puts("UDK: MEMORY SELF-TEST OK\n");
 
+    if (vm_init() != 0) {
+        vga_puts("UDK: PAGE TABLE INITIALIZATION FAILED\n");
+        halt();
+    }
+    vga_puts("UDK: PAGE TABLES LOADED, IDENTITY MAP 1 GIB, ");
+    vga_put_dec(memory_free_frames());
+    vga_puts(" FRAMES FREE\n");
+
+    int vm_result = vm_self_test();
+    if (vm_result != 0) {
+        vga_puts("UDK: VIRTUAL MEMORY SELF-TEST FAILED, CODE ");
+        vga_put_dec((uint64_t)vm_result);
+        vga_puts("\n");
+        halt();
+    }
+    vga_puts("UDK: VIRTUAL MEMORY SELF-TEST OK\n");
+
     pic_init();
     vga_puts("UDK: PIC REMAPPED TO VECTORS 32-47\n");
 
@@ -163,6 +181,15 @@ void udk_main(const struct udbl_info *info)
 
     interrupts_enable();
     vga_puts("UDK: INTERRUPTS ENABLED\n");
+
+#ifdef UDK_PAGEFAULT_TEST
+    vga_puts("UDK: PAGE FAULT TEST\n");
+    {
+        volatile uint64_t *unmapped = (volatile uint64_t *)(uintptr_t)VM_TEST_ADDRESS;
+
+        (void)*unmapped;
+    }
+#endif
 
 #ifdef UDK_FAULT_TEST
     vga_puts("UDK: FAULT TEST\n");

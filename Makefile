@@ -16,7 +16,7 @@ ROOTFS := $(BUILD)/rootfs
 
 KERNEL_SRCS := kernel/main.c kernel/vga.c kernel/gdt.c kernel/idt.c kernel/exception.c kernel/pic.c \
                kernel/timer.c kernel/keyboard.c kernel/kbd_map.c kernel/charbuf.c kernel/pmm.c kernel/heap.c \
-               kernel/memory.c
+               kernel/memory.c kernel/vmm.c kernel/vm.c
 KERNEL_HEADERS := $(wildcard kernel/*.h)
 KERNEL_DEFINES ?=
 KERNEL_OBJS := $(patsubst kernel/%.c,$(BUILD)/kernel/%.o,$(KERNEL_SRCS))
@@ -89,7 +89,7 @@ check: $(IMAGE) $(UDFSCK)
 	$(UDFSCK) -x sys/boot/kernel $(IMAGE) | cmp - $(BUILD)/kernel.bin
 
 TESTS := $(BUILD)/tests/test_kbd_map $(BUILD)/tests/test_charbuf $(BUILD)/tests/test_idt \
-         $(BUILD)/tests/test_pmm $(BUILD)/tests/test_heap
+         $(BUILD)/tests/test_pmm $(BUILD)/tests/test_heap $(BUILD)/tests/test_vmm
 
 $(BUILD)/tests/test_kbd_map: tests/test_kbd_map.c kernel/kbd_map.c kernel/kbd_map.h
 	mkdir -p $(dir $@)
@@ -110,6 +110,10 @@ $(BUILD)/tests/test_pmm: tests/test_pmm.c kernel/pmm.c kernel/pmm.h
 $(BUILD)/tests/test_heap: tests/test_heap.c kernel/heap.c kernel/heap.h
 	mkdir -p $(dir $@)
 	$(HOSTCC) $(HOSTCFLAGS) -Ikernel -o $@ tests/test_heap.c kernel/heap.c
+
+$(BUILD)/tests/test_vmm: tests/test_vmm.c kernel/vmm.c kernel/vmm.h kernel/pmm.h
+	mkdir -p $(dir $@)
+	$(HOSTCC) $(HOSTCFLAGS) -Ikernel -o $@ tests/test_vmm.c kernel/vmm.c
 
 test: $(TESTS)
 	@for t in $(TESTS); do $$t || exit 1; done
