@@ -1,0 +1,12 @@
+/build/
+/*.img
+/*.iso
+*.o
+*.bin
+*.elf
+*.sectors
+*.tmp
+*.log
+*~
+*.swp
+.DS_Store
