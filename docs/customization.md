@@ -23,12 +23,16 @@
 | UDSH | Any program in the UDE format | How the kernel starts the first program, the system call ABI and the console interface | OPEN |
 | UDFS | Another file system | On-disk format in [specs/udfs.md](specs/udfs.md). The driver interface inside the kernel depends on D1. | Format written, PROPOSED. Driver interface OPEN. |
 | UDE | Another executable format | Binary layout | OPEN |
-| Drivers | Depends on the kernel architecture (D1): rebuilding the kernel, loadable modules or user processes | | OPEN |
+| Drivers and services | User-space servers (D-022). A driver is replaced by replacing a program and its entry in the boot configuration. | IPC protocol of each service and the hardware access interface | OPEN |
 | Package manager | Deferred | | |
+
+## Drivers without recompiling the kernel
+
+**DECIDED (D-022).** UDK is a microkernel, so drivers (keyboard, console, disk) and services (file systems, namespaces) run as user programs. Replacing one means replacing a program and its entry in the boot configuration. The kernel is not rebuilt. What this needs is in [specs/microkernel.md](specs/microkernel.md): IPC, hardware access for drivers and a way to load the first servers.
 
 ## What a replacement boot loader must do
 
-At the user's own risk, a loader other than UDBL must follow the handoff in [specs/udbl.md](specs/udbl.md): load the UDK flat binary at `0x100000`, enter it in 64-bit mode with interrupts disabled, `RDI` pointing to a boot information structure that carries the memory map, and a kernel stack as described there. Finding the kernel, for example by reading UDFS, is the loader's own job.
+At the user's own risk, a loader other than UDBL must follow the handoff in [specs/udbl.md](specs/udbl.md): load the UDK flat binary at `0x100000`, enter it in 64-bit mode with interrupts disabled, `RDI` pointing to a boot information structure that carries the memory map, and a kernel stack as described there. Finding the kernel, for example by reading UDFS, is the loader's own job. Physical memory up to the end of the kernel image must be identity mapped; the kernel replaces the loader's page tables right away. The details are in [specs/memory-layout.md](specs/memory-layout.md).
 
 ## Uptime and the shell
 

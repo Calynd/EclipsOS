@@ -25,15 +25,27 @@ Every statement in these documents carries one of these states:
 | [specs/namespaces.md](specs/namespaces.md) | Namespace and resource addressing |
 | [specs/udbl.md](specs/udbl.md) | Boot loader interface, boot stages, handoff to the kernel |
 | [specs/udfs.md](specs/udfs.md) | UDFS on-disk format, tools and limits |
+| [specs/memory-layout.md](specs/memory-layout.md) | Virtual and physical memory layout, entering the higher half |
+| [specs/microkernel.md](specs/microkernel.md) | What the microkernel decision means, and the decisions it needs |
 | [specs/udk.md](specs/udk.md) | Kernel entry, build and current state |
 | [specs/udsh.md](specs/udsh.md) | Shell prompt and command set |
 
 ## Building and testing
 
+The Makefile is written for BSD make (**D-023**). On a BSD system `make` is bmake. It uses only features that GNU make also understands.
+
 | Command | Purpose |
 |---|---|
-| `make` | Builds the tools, the kernel, UDBL and the disk image `build/udos.img` |
-| `make run` | Boots the image in QEMU |
-| `make check` | Checks the image with `udfsck` and compares the kernel inside it |
-| `make test` | Runs the host tests |
-| `make clean` | Removes `build/` |
+| `bmake` | Builds the tools, the kernel, UDBL and the disk image `build/udos.img` |
+| `bmake run` | Boots the image in QEMU |
+| `bmake check` | Checks the image with `udfsck` and compares the kernel inside it |
+| `bmake test` | Runs the host tests |
+| `bmake clean` | Removes `build/` |
+
+Tools can be chosen on the command line, for example `bmake KERNEL_CC=gcc13 BOOT_CC=gcc13`. The variables are `KERNEL_CC`, `BOOT_CC`, `HOST_CC`, `LD` and `OBJCOPY`. Extra definitions for the kernel go in `KERNEL_DEFINES`, for example `bmake KERNEL_DEFINES=-DUDK_NULL_TEST run` (run `bmake clean` first, because changed definitions are not tracked).
+
+Notes:
+
+- Pattern rules, `$<` and the GNU functions (`wildcard`, `patsubst`, `shell`) are not portable between BSD make and GNU make, so every object has an explicit rule. Adding a kernel source file means adding it to `KERNEL_OBJS` and writing its rule, and adding a header means adding it to `KERNEL_HEADERS`.
+- The kernel needs GCC (it uses GCC-only options) and the loader is written for the GNU assembler syntax.
+- The Makefile was tested with GNU make 4.3 and GNU binutils. It was not run with bmake or with the LLVM linker and `objcopy` yet.

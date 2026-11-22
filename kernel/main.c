@@ -99,7 +99,7 @@ static void echo_loop(void)
     }
 }
 
-__attribute__((noreturn, section(".text.entry")))
+__attribute__((noreturn))
 void udk_main(const struct udbl_info *info)
 {
     clear_bss();
@@ -112,6 +112,9 @@ void udk_main(const struct udbl_info *info)
 
     vga_init(info->cursor_row);
     vga_puts("UDK: ENTERED IN 64-BIT MODE\n");
+    vga_puts("UDK: RUNNING IN THE HIGHER HALF AT ");
+    vga_put_hex((uint64_t)(uintptr_t)udk_main);
+    vga_puts("\n");
     vga_puts("UDK: BOOT DRIVE ");
     vga_put_hex(info->boot_drive);
     vga_puts("\n");
@@ -155,7 +158,7 @@ void udk_main(const struct udbl_info *info)
         vga_puts("UDK: PAGE TABLE INITIALIZATION FAILED\n");
         halt();
     }
-    vga_puts("UDK: PAGE TABLES LOADED, IDENTITY MAP 1 GIB, ");
+    vga_puts("UDK: PAGE TABLES LOADED, LOW ADDRESSES UNMAPPED, ");
     vga_put_dec(memory_free_frames());
     vga_puts(" FRAMES FREE\n");
 
@@ -181,6 +184,15 @@ void udk_main(const struct udbl_info *info)
 
     interrupts_enable();
     vga_puts("UDK: INTERRUPTS ENABLED\n");
+
+#ifdef UDK_NULL_TEST
+    vga_puts("UDK: NULL POINTER TEST\n");
+    {
+        volatile uint64_t *null_pointer = (volatile uint64_t *)0;
+
+        (void)*null_pointer;
+    }
+#endif
 
 #ifdef UDK_PAGEFAULT_TEST
     vga_puts("UDK: PAGE FAULT TEST\n");

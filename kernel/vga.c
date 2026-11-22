@@ -1,7 +1,8 @@
 #include "io.h"
+#include "layout.h"
 #include "vga.h"
 
-#define VGA_BASE ((volatile uint16_t *)0xB8000)
+#define VGA_BASE ((volatile uint16_t *)(HHDM_BASE + 0xB8000ull))
 #define VGA_COLS 80u
 #define VGA_ROWS 25u
 #define VGA_ATTR 0x07u

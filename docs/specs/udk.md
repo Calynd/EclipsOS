@@ -1,12 +1,12 @@
 # UDK
 
-UDK is the UDOS kernel. Its architecture (monolithic, microkernel or other) is **OPEN**.
+UDK is the UDOS kernel. It is a microkernel (D-022). What that means for the code is in [microkernel.md](microkernel.md).
 
 ## Entry
 
-**PROPOSED.** UDBL enters UDK at `0x100000` in 64-bit mode. See [udbl.md](udbl.md) for the handoff contract.
+**PROPOSED.** UDBL enters UDK at physical `0x100000` in 64-bit mode. See [udbl.md](udbl.md) for the handoff contract.
 
-The entry function is `udk_main(const struct udbl_info *info)` in `kernel/main.c`. The linker script places it first in the binary so that the load address is the entry point.
+The entry point is `udk_entry` in `kernel/entry.c`, linked at its physical address. It builds temporary page tables, switches to them and jumps to `udk_main(const struct udbl_info *info)` in `kernel/main.c`, which runs in the higher half. See [memory-layout.md](memory-layout.md).
 
 ## Build
 
@@ -15,21 +15,25 @@ The entry function is `udk_main(const struct udbl_info *info)` in `kernel/main.c
 | Item | Value |
 |---|---|
 | Flags | `-ffreestanding -mno-red-zone -mgeneral-regs-only -fcf-protection=none -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -fno-tree-loop-distribute-patterns` |
-| Link address | `0x100000`, defined in `kernel/kernel.ld` |
+| Link address | `kernel/entry.c` at `0x100000`. Everything else at `0xFFFFFFFF80000000` plus its physical address, compiled with `-mcmodel=kernel`. Defined in `kernel/kernel.ld`. |
 | Output | Flat binary produced with `objcopy -O binary` |
 
 Consequences:
 
 - `-mgeneral-regs-only` keeps the compiler from using SSE registers, which are not enabled. It is also what allows interrupt handlers written in C.
 - `-mno-red-zone` is required because interrupts use the kernel stack.
-- The flat binary does not contain `.bss`. The kernel zeroes it at the start of `udk_main`, using `__bss_start` and `__bss_end` from the linker script.
+- The flat binary does not contain `.bss`, the kernel stack or the boot page tables. The kernel zeroes `.bss` at the start of `udk_main`, using `__bss_start` and `__bss_end` from the linker script. The entry stub zeroes the boot page tables itself.
+- The entry stub is compiled without the kernel code model and may not call anything outside its own section.
 - The kernel image can have at most 896 sectors (see [udbl.md](udbl.md)).
 
-## Current state (milestone 5)
+## Current state (milestone 5b)
 
 | File | Role |
 |---|---|
-| `kernel/main.c` | Entry, boot information check, initialization order, keyboard echo loop and uptime display |
+| `kernel/entry.c` | Entry stub at the physical address: temporary page tables, switch to the higher half |
+| `kernel/boot_tables.h` | Builds the temporary page tables (shared with a host test) |
+| `kernel/layout.h` | Address space constants |
+| `kernel/main.c` | Main function of the higher half, boot information check, initialization order, keyboard echo loop and uptime display |
 | `kernel/vga.c`, `kernel/vga.h` | VGA text console at `0xB8000` with scrolling, backspace, hardware cursor and a status line writer |
 | `kernel/udbl.h` | Boot information structures shared with UDBL |
 | `kernel/gdt.c`, `kernel/gdt.h` | Kernel GDT: null, 64-bit code (`0x08`), data (`0x10`) |
@@ -47,8 +51,11 @@ Consequences:
 | `kernel/vm.c`, `kernel/vm.h` | The kernel address space: builds the kernel page tables, loads them and runs the self-test |
 | `kernel/io.h`, `kernel/interrupt.h` | Port I/O, interrupt frame and `sti`/`cli`/`hlt` helpers |
 
+The keyboard, the screen console and the uptime display are in the kernel for now. With the microkernel decision they are to move to user-space servers, and they stay until their replacements work (D-016). See [microkernel.md](microkernel.md).
+
 ### Initialization order
 
+0. Entry stub: temporary page tables, kernel stack, jump to the higher half (see [memory-layout.md](memory-layout.md)).
 1. Clear `.bss` and check the boot information.
 2. Print boot drive and memory summary.
 3. Load the kernel GDT and reload the segment registers.
@@ -72,7 +79,7 @@ Consequences:
 | Reserved | The kernel image, from `__kernel_start` to `__kernel_end` (end of `.bss`, page aligned). |
 | Allocation | Next-fit for single frames, first-fit for contiguous runs. A failed allocation returns `PMM_NO_FRAME`. Freeing detects unaligned, out of range and double frees. |
 | Kernel heap | 1 MiB of contiguous frames. First-fit blocks with 16-byte headers and 16-byte alignment, split on allocation and merged on free. |
-| Address conversion | `phys_to_virt` and `virt_to_phys` (identity today). |
+| Address conversion | `phys_to_virt` adds the direct map base (`0xFFFF800000000000`). `virt_to_phys` handles direct map and kernel window addresses. |
 
 At boot the self-test allocates and frees frames, writes to them, checks that a double free is rejected and exercises `kmalloc` and `kfree`. It prints `UDK: MEMORY SELF-TEST OK`, or `UDK: MEMORY SELF-TEST FAILED, CODE n` and halts.
 
@@ -96,28 +103,32 @@ The count comes from the second usable region of the memory map (`0x100000` to `
 | Operations | `vmm_map`, `vmm_map_large`, `vmm_unmap`, `vmm_translate`, `vmm_space_init`, `vmm_space_destroy`. Errors: no memory, already mapped, not mapped, invalid argument, inside a large page. |
 | Access to memory | The manager reaches table frames and allocates them only through operations given by the caller (`struct vmm_ops`). This is what allows the host tests, and one place to change when the kernel layout changes. |
 | Flags | Write, user, write-through, cache disable, no-execute. A user mapping also sets the user bit on every table level of its path. |
-| Kernel address space | Identity map of the first 1 GiB with 2 MiB pages, writable. The tables left by UDBL (below 1 MiB) are abandoned. |
+| Kernel address space | The direct map and the kernel window of the first 1 GiB, with 2 MiB pages, writable, and nothing else. There is no identity map, so the lower half faults. |
 | Flushing | `invlpg` after every map and unmap. |
 
-The self-test maps a frame at `0x200000000` (outside the identity map), writes through the new address and reads through the physical one, checks that mapping twice fails, unmaps, checks the translation of the VGA buffer through a large page and checks that unmapping inside a large page is refused.
+The self-test maps a frame at `0x200000000` (in the lower half), writes through the new address and reads through the direct map, checks that mapping twice fails, unmaps, checks the translation of the VGA buffer through the direct map and of a kernel function through the kernel window, checks that unmapping inside a large page is refused, and checks that addresses `0` and `0x1000` are not mapped.
 
-With the default QEMU memory the new expected lines are:
+The expected lines are below. The numbers depend on the size of the kernel image, which is rounded up to whole frames, so they can be one or two frames away on another compiler. With the default QEMU memory (128 MB) and the reference build, the kernel image is 22 frames:
 
 ```text
-UDK: PAGE TABLES LOADED, IDENTITY MAP 1 GIB, 32209 FRAMES FREE
+UDK: RUNNING IN THE HIGHER HALF AT 0xFFFFFFFF801000E0
+UDK: PHYSICAL MEMORY 32202 FRAMES FREE (128808 KIB)
+UDK: PAGE TABLES LOADED, LOW ADDRESSES UNMAPPED, 32197 FRAMES FREE
 UDK: VIRTUAL MEMORY SELF-TEST OK
 ```
 
-The 3 frames are the PML4, the PDPT and the PD of the identity map.
+The address on the first line starts with `0xFFFFFFFF8010`. The 5 frames of the final tables are a PML4, two PDPTs and two PDs (the direct map and the kernel window).
 
-To see a page fault report, build with a read from the address that the self-test unmapped:
+To see a page fault report, build with one of these tests:
 
 ```text
+make clean
+make KERNEL_DEFINES=-DUDK_NULL_TEST run
 make clean
 make KERNEL_DEFINES=-DUDK_PAGEFAULT_TEST run
 ```
 
-The expected result is `UDK: EXCEPTION 14 PAGE FAULT`, `UDK: ERROR CODE 0x0`, `UDK: FAULT ADDRESS 0x200000000` and `UDK: PAGE NOT PRESENT, READ, SUPERVISOR`.
+The first reads address 0 and must report `UDK: EXCEPTION 14 PAGE FAULT`, `UDK: FAULT ADDRESS 0x0` and `UDK: PAGE NOT PRESENT, READ, SUPERVISOR`. The second reads the address that the self-test unmapped and must report `UDK: FAULT ADDRESS 0x200000000` with the same decoding.
 
 ### Interrupts
 
@@ -158,7 +169,7 @@ After the initialization lines the kernel shows the prompt `> ` and echoes what 
 
 ### Tests
 
-`make test` builds and runs host tests for the logic that does not depend on the hardware: `tests/test_kbd_map.c` (translation, Shift, Caps Lock, release and extended codes), `tests/test_charbuf.c` (order, capacity, wraparound) and `tests/test_idt.c` (byte layout of an IDT entry), `tests/test_pmm.c` (frame allocator: ranges, rounding, exhaustion, double free, contiguous runs) and `tests/test_heap.c` (alignment, splitting, merging, double free, exhaustion and a randomized stress run) and `tests/test_vmm.c` (mapping, translation, tables created per path, user bit, large pages, errors, out of memory and destroying a space, using simulated physical memory).
+`make test` builds and runs host tests for the logic that does not depend on the hardware: `tests/test_kbd_map.c` (translation, Shift, Caps Lock, release and extended codes), `tests/test_charbuf.c` (order, capacity, wraparound) and `tests/test_idt.c` (byte layout of an IDT entry), `tests/test_pmm.c` (frame allocator: ranges, rounding, exhaustion, double free, contiguous runs) and `tests/test_heap.c` (alignment, splitting, merging, double free, exhaustion and a randomized stress run) and `tests/test_boot_tables.c` (the temporary page tables of the entry stub: identity map, direct map and kernel window, and what is not mapped) and `tests/test_vmm.c` (mapping, translation, tables created per path, user bit, large pages, errors, out of memory and destroying a space, using simulated physical memory).
 
 ## Known limits
 
@@ -168,17 +179,15 @@ After the initialization lines the kernel shows the prompt `> ` and echoes what 
 - Exceptions are fatal. Nothing is recovered yet.
 - The physical memory manager sees only the first 1 GiB, and the heap does not grow.
 - `vmm_unmap` does not free page tables that become empty. They are freed when the whole space is destroyed. The self-test leaves 2 table frames allocated.
-- The kernel is identity mapped and writable everywhere, including its own code. There is no separation between code and data yet, and the low page (address 0) is mapped.
+- The kernel mappings are writable everywhere, including its own code. There is no separation between code and data yet.
 - The no-execute flag exists in the interface but must not be used yet: the CPU rejects a no-execute entry as a reserved bit fault until `EFER.NXE` is enabled.
-- The kernel is not in the higher half. That depends on D3 in the roadmap.
-- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). Milestone 5 (virtual memory) passes the host tests and was checked by disassembly, but has not been executed in QEMU yet. The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
+- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). Milestone 5 (virtual memory) ran correctly in QEMU. Milestone 5b (higher half) passes the host tests and was checked by disassembly of the entry stub, by comparing the flat binary with the ELF sections and by the emulated loader, but has not been executed in QEMU yet. The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
 
 ## Open items
 
 | Item | Status |
 |---|---|
-| Kernel architecture | OPEN |
-| Moving the kernel to the higher half, and the layout of user address spaces | OPEN (D3) |
+| Layout of user address spaces inside the lower half | OPEN |
 | Processes, scheduling and system calls | OPEN |
 | Keyboard layout and a key repeat policy | OPEN |
-| Drivers architecture | OPEN |
+| Interface of drivers: IPC protocol and hardware access | OPEN |

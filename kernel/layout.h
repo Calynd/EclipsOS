@@ -1,0 +1,9 @@
+#ifndef UDK_LAYOUT_H
+#define UDK_LAYOUT_H
+
+#define KERNEL_PHYS_BASE 0x100000ull
+#define KERNEL_VIRT_BASE 0xFFFFFFFF80000000ull
+#define HHDM_BASE 0xFFFF800000000000ull
+#define DIRECT_MAP_LIMIT (1ull << 30)
+
+#endif

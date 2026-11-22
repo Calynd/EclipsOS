@@ -1,9 +1,8 @@
 #include <stdint.h>
+#include "layout.h"
 #include "memory.h"
 #include "vm.h"
 #include "vmm.h"
-
-#define VM_IDENTITY_LIMIT (1ull << 30)
 
 static struct vmm_space kernel_space;
 
@@ -44,8 +43,10 @@ int vm_init(void)
     if (vmm_space_init(&kernel_space, &kernel_ops) != VMM_OK)
         return -1;
 
-    for (uint64_t address = 0; address < VM_IDENTITY_LIMIT; address += VMM_LARGE_PAGE_SIZE) {
-        if (vmm_map_large(&kernel_space, address, address, VMM_WRITE) != VMM_OK)
+    for (uint64_t address = 0; address < DIRECT_MAP_LIMIT; address += VMM_LARGE_PAGE_SIZE) {
+        if (vmm_map_large(&kernel_space, HHDM_BASE + address, address, VMM_WRITE) != VMM_OK)
+            return -1;
+        if (vmm_map_large(&kernel_space, KERNEL_VIRT_BASE + address, address, VMM_WRITE) != VMM_OK)
             return -1;
     }
 
@@ -89,10 +90,17 @@ int vm_self_test(void)
         return 6;
     if (vmm_translate(&kernel_space, VM_TEST_ADDRESS, NULL, NULL) != VMM_ERR_NOT_MAPPED)
         return 7;
-    if (vmm_translate(&kernel_space, 0xB8000, &physical, NULL) != VMM_OK || physical != 0xB8000)
+    if (vmm_translate(&kernel_space, HHDM_BASE + 0xB8000, &physical, NULL) != VMM_OK || physical != 0xB8000)
         return 8;
-    if (vmm_unmap(&kernel_space, 0x200000, NULL) != VMM_ERR_LARGE)
+    if (vmm_unmap(&kernel_space, HHDM_BASE + 0x200000, NULL) != VMM_ERR_LARGE)
         return 9;
+    if (vmm_translate(&kernel_space, (uint64_t)(uintptr_t)vm_self_test, &physical, NULL) != VMM_OK ||
+        physical != (uint64_t)(uintptr_t)vm_self_test - KERNEL_VIRT_BASE)
+        return 11;
+    if (vmm_translate(&kernel_space, 0x1000, NULL, NULL) != VMM_ERR_NOT_MAPPED)
+        return 12;
+    if (vmm_translate(&kernel_space, 0, NULL, NULL) != VMM_ERR_NOT_MAPPED)
+        return 12;
 
     if (memory_free_frame(frame) != 0)
         return 10;

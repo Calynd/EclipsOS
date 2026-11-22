@@ -8,8 +8,11 @@
 #define MEMORY_FRAMES (MEMORY_LIMIT / PMM_FRAME_SIZE)
 #define HEAP_BYTES (1u << 20)
 
-extern char __kernel_start[];
-extern char __kernel_end[];
+extern char __kernel_phys_start[];
+extern char __kernel_phys_end[];
+
+#define KERNEL_PHYS_START ((uint64_t)(uintptr_t)__kernel_phys_start)
+#define KERNEL_PHYS_END ((uint64_t)(uintptr_t)__kernel_phys_end)
 
 static uint8_t frame_bitmap[MEMORY_FRAMES / 8];
 static struct pmm pmm;
@@ -39,7 +42,7 @@ int memory_init(const struct udbl_info *info)
             pmm_free_range(&pmm, start, end);
     }
 
-    pmm_reserve_range(&pmm, virt_to_phys(__kernel_start), virt_to_phys(__kernel_end));
+    pmm_reserve_range(&pmm, KERNEL_PHYS_START, KERNEL_PHYS_END);
 
     heap_physical = pmm_alloc_contiguous(&pmm, HEAP_BYTES / PMM_FRAME_SIZE);
     if (heap_physical == PMM_NO_FRAME)
@@ -97,7 +100,7 @@ int memory_self_test(void)
             return 3;
         if (frames[i] < MEMORY_LOW_LIMIT || frames[i] >= MEMORY_LIMIT)
             return 4;
-        if (frames[i] + PMM_FRAME_SIZE > virt_to_phys(__kernel_start) && frames[i] < virt_to_phys(__kernel_end))
+        if (frames[i] + PMM_FRAME_SIZE > KERNEL_PHYS_START && frames[i] < KERNEL_PHYS_END)
             return 4;
     }
     if (frames[0] == frames[1] || frames[1] == frames[2] || frames[0] == frames[2])

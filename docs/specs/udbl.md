@@ -135,7 +135,7 @@ After an error, UDBL returns to the `Boot>` prompt.
 
 ### Paging at handoff
 
-**PROPOSED.** Identity mapping of the first 1 GiB using 2 MiB pages (PML4 at `0x2000`, PDPT at `0x3000`, PD at `0x4000`). The kernel is expected to build its own page tables.
+**PROPOSED.** Identity mapping of the first 1 GiB using 2 MiB pages (PML4 at `0x2000`, PDPT at `0x3000`, PD at `0x4000`). The kernel replaces these tables at its first instructions and runs in the higher half (see [memory-layout.md](memory-layout.md)). All it needs from them is an identity mapping of physical memory up to the end of its image and of the boot information.
 
 ### GDT
 

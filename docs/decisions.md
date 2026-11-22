@@ -24,16 +24,18 @@
 | D-018 | UDOS is highly customizable: a person can replace each component (boot loader, shell and others). Replacing the boot loader is at the user's own risk | Project owner |
 | D-019 | The uptime display is part of UDSH. Until UDSH exists, UDK draws it (D-016) | Project owner |
 | D-020 | The shell prompt does not contain the user name: it is `disk:0//>`, not `root@disk:0//>`. The current user (for example ROOT) is shown in the top right corner of the screen, where the uptime is | Project owner |
+| D-021 | The kernel runs in the higher half of the address space. The lower half belongs to user programs | Project owner |
+| D-022 | UDK is a microkernel, so that drivers and other services can be replaced without recompiling or replacing the kernel | Project owner |
+| D-023 | The build system is a Makefile written for BSD make (bmake), using only features that GNU make also understands | Project owner |
 
 ## Pending
 
 | # | Area | Note |
 |---|---|---|
-| 1 | Kernel architecture | Still to be decided |
 | 2 | Assembly policy | Real mode code cannot be C. See Proposed |
 | 3 | Memory management | |
 | 4 | Processes and multitasking | |
-| 5 | Driver architecture | |
+| 5 | Driver architecture | User-space servers (D-022). The IPC protocol and hardware access are OPEN. |
 | 6 | System calls | |
 | 7 | ABI | |
 | 8 | UDFS specification | |
@@ -48,6 +50,9 @@
 | 17 | Emulation and testing | |
 | 18 | Versioning and distribution | |
 | 19 | UEFI support | Deferred by D-011 |
+| 20 | IPC model | See specs/microkernel.md |
+| 21 | Hardware access for user-space drivers | See specs/microkernel.md |
+| 22 | Boot modules and the format of `boot.cfg` | See specs/microkernel.md |
 
 ## Proposed
 
@@ -69,12 +74,16 @@
 | P-016 | Interrupt handlers are written in C with the `interrupt` attribute, without assembly stubs. |
 | P-017 | The keyboard is PS/2 with scancode set 1 and a US layout as a stand-in. |
 | P-018 | The customization rules R1 to R5 in [customization.md](customization.md): documented and versioned contracts, no dependence on internals, no special treatment of default components. |
-| P-019 | The physical memory manager uses 4 KiB frames and a bitmap. It manages only memory from 1 MiB up to 1 GiB, which is the part the kernel can reach with the identity mapping left by UDBL. |
+| P-019 | The physical memory manager uses 4 KiB frames and a bitmap. It manages only memory from 1 MiB up to 1 GiB, which is the part covered by the direct map. |
 | P-020 | The kernel heap is 1 MiB, taken from the physical memory manager, with a first-fit allocator and merging of free blocks. |
 | P-021 | Kernel code converts between physical and virtual addresses only through `phys_to_virt` and `virt_to_phys`, so that a different memory layout (D3 in the roadmap) changes one place. |
 | P-022 | The virtual memory manager uses 4-level page tables with 4 KiB pages and 2 MiB large pages. It reaches memory only through operations supplied by the caller, so it can be tested on the host. |
-| P-023 | UDK runs on its own page tables: an identity map of the first 1 GiB with 2 MiB pages, writable, without separation of code and data. The tables left by UDBL are abandoned. |
+| P-023 | UDK runs on its own page tables, writable, without separation of code and data. The tables left by UDBL are abandoned. Superseded in part by D-021 and P-025 to P-027: the identity map no longer exists once the kernel runs. |
 | P-024 | `vmm_unmap` does not free empty page tables. They are freed when the address space is destroyed. |
+| P-025 | The kernel is loaded at physical `0x100000` and linked in the higher half at `0xFFFFFFFF80000000` plus its physical address. Physical memory is also mapped at `0xFFFF800000000000` (direct map). Both cover the first 1 GiB. See [specs/memory-layout.md](specs/memory-layout.md). |
+| P-026 | The kernel starts with a small stub linked at its physical address. It builds temporary page tables inside the kernel image, switches to them and jumps to the higher half. UDBL does not change. |
+| P-027 | Once running in the higher half the kernel builds its final page tables with no identity map, so addresses in the lower half fault. |
+| P-028 | The kernel has its own 16 KiB stack inside its image. The 20 KiB of temporary boot page tables are not reclaimed. |
 | P-006 | UDBL maps the first 1 GiB with 2 MiB pages at handoff. The kernel builds its own page tables. |
 | P-007 | The number of dots per boot line is fixed per build (`BOOT_DOTS` in the Makefile, default 18, as in the visual target). With one dot per second the kernel line takes about 18 seconds. |
 
@@ -88,6 +97,7 @@
 | Case sensitivity of UDFS names versus a classic case-insensitive look | OPEN |
 | Permission model, timestamps, links, journaling and recovery for UDFS | OPEN |
 | Does the top right corner show the user and the uptime together, or does the user replace the uptime? D-016 says the uptime is never removed, and D-020 puts the user in the same corner | OPEN |
+| How boot modules are described in the boot information (version 2 of the structure) | OPEN |
 | Where the configuration that selects the first user program lives, and its format | OPEN |
 | Whether UDK offers a status line interface for the shell (needed by D-019) | OPEN |
 | Keyboard layout to support (the system currently uses US as a stand-in) | OPEN |
