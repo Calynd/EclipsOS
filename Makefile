@@ -10,6 +10,7 @@ IMAGE_SIZE_KIB = 1440
 BOOT_DOTS = 18
 VOLUME_LABEL = UDOS
 KERNEL_DEFINES ?=
+USER_DEFINES ?=
 
 BUILD = build
 IMAGE = ${BUILD}/udos.img
@@ -30,19 +31,26 @@ KERNEL_HEADERS = \
     kernel/keyboard.h \
     kernel/layout.h \
     kernel/memory.h \
+    kernel/msr.h \
     kernel/pic.h \
     kernel/pmm.h \
+    kernel/syscall.h \
     kernel/timer.h \
+    kernel/tss.h \
+    kernel/uaccess.h \
     kernel/udbl.h \
+    kernel/user.h \
     kernel/vga.h \
     kernel/vm.h \
-    kernel/vmm.h
+    kernel/vmm.h \
+    include/udk_abi.h
 
 KERNEL_OBJS = \
     ${BUILD}/kernel/entry.o \
     ${BUILD}/kernel/main.o \
     ${BUILD}/kernel/vga.o \
     ${BUILD}/kernel/gdt.o \
+    ${BUILD}/kernel/tss.o \
     ${BUILD}/kernel/idt.o \
     ${BUILD}/kernel/exception.o \
     ${BUILD}/kernel/pic.o \
@@ -54,11 +62,19 @@ KERNEL_OBJS = \
     ${BUILD}/kernel/heap.o \
     ${BUILD}/kernel/memory.o \
     ${BUILD}/kernel/vmm.o \
-    ${BUILD}/kernel/vm.o
+    ${BUILD}/kernel/vm.o \
+    ${BUILD}/kernel/uaccess.o \
+    ${BUILD}/kernel/syscall.o \
+    ${BUILD}/kernel/user.o \
+    ${BUILD}/kernel/user_image.o
 
 KERNEL_CFLAGS = -std=c11 -m64 -O2 -Wall -Wextra -Werror -ffreestanding -fno-pic -fno-pie \
     -fno-stack-protector -fno-asynchronous-unwind-tables -fcf-protection=none \
-    -fno-tree-loop-distribute-patterns -mno-red-zone -mgeneral-regs-only ${KERNEL_DEFINES}
+    -fno-tree-loop-distribute-patterns -mno-red-zone -mgeneral-regs-only -Iinclude ${KERNEL_DEFINES}
+
+USER_CFLAGS = -std=c11 -m64 -O2 -Wall -Wextra -Werror -ffreestanding -fno-pic -fno-pie \
+    -fno-stack-protector -fno-asynchronous-unwind-tables -fcf-protection=none \
+    -fno-tree-loop-distribute-patterns -mno-red-zone -mgeneral-regs-only -Iinclude ${USER_DEFINES}
 
 HOST_CFLAGS = -std=c11 -D_POSIX_C_SOURCE=200809L -O2 -Wall -Wextra -Werror -Iinclude
 
@@ -72,7 +88,9 @@ TESTS = \
     ${BUILD}/tests/test_pmm \
     ${BUILD}/tests/test_heap \
     ${BUILD}/tests/test_vmm \
-    ${BUILD}/tests/test_boot_tables
+    ${BUILD}/tests/test_boot_tables \
+    ${BUILD}/tests/test_uaccess \
+    ${BUILD}/tests/test_descriptors
 
 .PHONY: all clean run check test
 
@@ -102,6 +120,20 @@ ${BUILD}/stage2.bin: ${BUILD}/stage2.o
 	${LD} -m elf_x86_64 --oformat binary -Ttext 0x7E00 -o ${BUILD}/stage2.bin ${BUILD}/stage2.o
 	@test $$(( $$(wc -c < ${BUILD}/stage2.bin) )) -le $$(( ${STAGE2_SECTORS} * 512 )) || (echo "stage2 does not fit in ${STAGE2_SECTORS} sectors" && exit 1)
 
+${BUILD}/user/hello.o: user/hello.c user/udos.h include/udk_abi.h
+	mkdir -p ${BUILD}/user
+	${KERNEL_CC} ${USER_CFLAGS} -c -o ${BUILD}/user/hello.o user/hello.c
+
+${BUILD}/user/hello.elf: ${BUILD}/user/hello.o user/user.ld
+	${LD} -m elf_x86_64 -nostdlib -T user/user.ld -o ${BUILD}/user/hello.elf ${BUILD}/user/hello.o
+
+${BUILD}/user/hello.bin: ${BUILD}/user/hello.elf
+	${OBJCOPY} -O binary ${BUILD}/user/hello.elf ${BUILD}/user/hello.bin
+
+${BUILD}/kernel/user_image.o: kernel/user_image.S ${BUILD}/user/hello.bin
+	mkdir -p ${BUILD}/kernel
+	${KERNEL_CC} -m64 -c -Wa,-I,${BUILD}/user -o ${BUILD}/kernel/user_image.o kernel/user_image.S
+
 ${BUILD}/kernel/entry.o: kernel/entry.c ${KERNEL_HEADERS}
 	mkdir -p ${BUILD}/kernel
 	${KERNEL_CC} ${KERNEL_CFLAGS} -c -o ${BUILD}/kernel/entry.o kernel/entry.c
@@ -117,6 +149,10 @@ ${BUILD}/kernel/vga.o: kernel/vga.c ${KERNEL_HEADERS}
 ${BUILD}/kernel/gdt.o: kernel/gdt.c ${KERNEL_HEADERS}
 	mkdir -p ${BUILD}/kernel
 	${KERNEL_CC} ${KERNEL_CFLAGS} -mcmodel=kernel -c -o ${BUILD}/kernel/gdt.o kernel/gdt.c
+
+${BUILD}/kernel/tss.o: kernel/tss.c ${KERNEL_HEADERS}
+	mkdir -p ${BUILD}/kernel
+	${KERNEL_CC} ${KERNEL_CFLAGS} -mcmodel=kernel -c -o ${BUILD}/kernel/tss.o kernel/tss.c
 
 ${BUILD}/kernel/idt.o: kernel/idt.c ${KERNEL_HEADERS}
 	mkdir -p ${BUILD}/kernel
@@ -165,6 +201,18 @@ ${BUILD}/kernel/vmm.o: kernel/vmm.c ${KERNEL_HEADERS}
 ${BUILD}/kernel/vm.o: kernel/vm.c ${KERNEL_HEADERS}
 	mkdir -p ${BUILD}/kernel
 	${KERNEL_CC} ${KERNEL_CFLAGS} -mcmodel=kernel -c -o ${BUILD}/kernel/vm.o kernel/vm.c
+
+${BUILD}/kernel/uaccess.o: kernel/uaccess.c ${KERNEL_HEADERS}
+	mkdir -p ${BUILD}/kernel
+	${KERNEL_CC} ${KERNEL_CFLAGS} -mcmodel=kernel -c -o ${BUILD}/kernel/uaccess.o kernel/uaccess.c
+
+${BUILD}/kernel/syscall.o: kernel/syscall.c ${KERNEL_HEADERS}
+	mkdir -p ${BUILD}/kernel
+	${KERNEL_CC} ${KERNEL_CFLAGS} -mcmodel=kernel -c -o ${BUILD}/kernel/syscall.o kernel/syscall.c
+
+${BUILD}/kernel/user.o: kernel/user.c ${KERNEL_HEADERS}
+	mkdir -p ${BUILD}/kernel
+	${KERNEL_CC} ${KERNEL_CFLAGS} -mcmodel=kernel -c -o ${BUILD}/kernel/user.o kernel/user.c
 
 ${BUILD}/kernel.elf: ${KERNEL_OBJS} kernel/kernel.ld
 	${LD} -m elf_x86_64 -nostdlib -T kernel/kernel.ld -o ${BUILD}/kernel.elf ${KERNEL_OBJS}
@@ -221,6 +269,14 @@ ${BUILD}/tests/test_vmm: tests/test_vmm.c kernel/vmm.c kernel/vmm.h kernel/pmm.h
 ${BUILD}/tests/test_boot_tables: tests/test_boot_tables.c kernel/vmm.c kernel/vmm.h kernel/boot_tables.h kernel/layout.h
 	mkdir -p ${BUILD}/tests
 	${HOST_CC} ${HOST_CFLAGS} -Ikernel -o ${BUILD}/tests/test_boot_tables tests/test_boot_tables.c kernel/vmm.c
+
+${BUILD}/tests/test_uaccess: tests/test_uaccess.c kernel/uaccess.c kernel/vmm.c kernel/uaccess.h kernel/vmm.h
+	mkdir -p ${BUILD}/tests
+	${HOST_CC} ${HOST_CFLAGS} -Ikernel -o ${BUILD}/tests/test_uaccess tests/test_uaccess.c kernel/uaccess.c kernel/vmm.c
+
+${BUILD}/tests/test_descriptors: tests/test_descriptors.c kernel/gdt.h kernel/tss.h kernel/syscall.h kernel/uaccess.h include/udk_abi.h
+	mkdir -p ${BUILD}/tests
+	${HOST_CC} ${HOST_CFLAGS} -Ikernel -o ${BUILD}/tests/test_descriptors tests/test_descriptors.c
 
 test: ${TESTS}
 	@for t in ${TESTS}; do $$t || exit 1; done

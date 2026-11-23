@@ -9,10 +9,10 @@
 | D-003 | The package manager `udp` is deferred to a later phase | Project owner |
 | D-004 | `disk:N` identifies a physical disk (HD, SSD, floppy or any other); `disk:0`, `disk:1`, `disk:2`, ... are different disks | Project owner |
 | D-005 | The UDBL prompt is `Boot>` and nothing else | Project owner |
-| D-006 | Classic visual identity, in the style of MS-DOS | Project document |
-| D-007 | UDOS is 100% independent of any other system; KOREX may only inspire ideas for the file system | Project owner |
+| D-006 | Classic text-mode visual identity | Project document |
+| D-007 | UDOS is 100% independent of any other system | Project owner |
 | D-008 | The root directory layout is frozen; additions need discussion | Project document |
-| D-009 | No drive letters such as `C:\` or `A:\` | Project document |
+| D-009 | No drive letters. Resources are identified by namespaces | Project document |
 | D-010 | Target CPU architecture is x86_64 | Project owner |
 | D-011 | Firmware: BIOS first. UEFI is considered only after BIOS works | Project owner |
 | D-012 | UDOS component names are always written in uppercase: UDBL, UDFS, UDSH, UDE, UDK | Project owner |
@@ -27,6 +27,7 @@
 | D-021 | The kernel runs in the higher half of the address space. The lower half belongs to user programs | Project owner |
 | D-022 | UDK is a microkernel, so that drivers and other services can be replaced without recompiling or replacing the kernel | Project owner |
 | D-023 | The build system is a Makefile written for BSD make (bmake), using only features that GNU make also understands | Project owner |
+| D-024 | System calls use the `syscall` instruction | Project owner |
 
 ## Pending
 
@@ -84,6 +85,13 @@
 | P-026 | The kernel starts with a small stub linked at its physical address. It builds temporary page tables inside the kernel image, switches to them and jumps to the higher half. UDBL does not change. |
 | P-027 | Once running in the higher half the kernel builds its final page tables with no identity map, so addresses in the lower half fault. |
 | P-028 | The kernel has its own 16 KiB stack inside its image. The 20 KiB of temporary boot page tables are not reclaimed. |
+| P-029 | System call convention: number in `RAX`, arguments in `RDI`, `RSI`, `RDX`, `R10`, `R8`, `R9`, result in `RAX` (negative is an error), `RCX` and `R11` destroyed, every other register preserved. See [specs/abi.md](specs/abi.md). |
+| P-030 | GDT layout: kernel code `0x08`, kernel data `0x10`, an unused 32-bit user code entry at `0x18`, user data `0x23`, user code `0x2B`, TSS at `0x30`. The order follows from `sysretq`. |
+| P-031 | The kernel has a 16 KiB trap stack used by system calls and by interrupts from user mode, and a separate 8 KiB stack for the double fault handler. |
+| P-032 | First system calls: `DEBUG_WRITE` (temporary), `EXIT` and `TIME`. |
+| P-033 | The kernel never dereferences a user pointer. It translates each page, requires it to be user accessible and copies through the kernel mapping. |
+| P-034 | Until the UDE loader exists, the first user program is a flat binary linked at `0x400000` and embedded in the kernel image. |
+| P-035 | User stack: 8 KiB with its top at `0x00007FFFFFFFF000`. |
 | P-006 | UDBL maps the first 1 GiB with 2 MiB pages at handoff. The kernel builds its own page tables. |
 | P-007 | The number of dots per boot line is fixed per build (`BOOT_DOTS` in the Makefile, default 18, as in the visual target). With one dot per second the kernel line takes about 18 seconds. |
 

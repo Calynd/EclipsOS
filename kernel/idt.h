@@ -32,5 +32,6 @@ static inline struct idt_entry idt_make_entry(uint64_t handler, uint16_t selecto
 
 void idt_init(void);
 void idt_set_handler(uint8_t vector, void *handler);
+void idt_set_handler_ist(uint8_t vector, void *handler, uint8_t ist);
 
 #endif

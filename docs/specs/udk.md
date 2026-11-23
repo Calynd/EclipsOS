@@ -26,13 +26,20 @@ Consequences:
 - The entry stub is compiled without the kernel code model and may not call anything outside its own section.
 - The kernel image can have at most 896 sectors (see [udbl.md](udbl.md)).
 
-## Current state (milestone 5b)
+## Current state (milestone 6)
 
 | File | Role |
 |---|---|
 | `kernel/entry.c` | Entry stub at the physical address: temporary page tables, switch to the higher half |
 | `kernel/boot_tables.h` | Builds the temporary page tables (shared with a host test) |
 | `kernel/layout.h` | Address space constants |
+| `kernel/tss.c`, `kernel/tss.h` | Task state segment, the trap stack and the double fault stack |
+| `kernel/msr.h` | Access to model specific registers |
+| `kernel/syscall.c`, `kernel/syscall.h` | The `syscall` entry code, its setup and the dispatcher |
+| `kernel/uaccess.c`, `kernel/uaccess.h` | Safe copy from user memory (pure logic) |
+| `kernel/user.c`, `kernel/user.h` | Starts and ends the first user program |
+| `kernel/user_image.S` | Embeds the user program binary in the kernel image |
+| `user/` | The first user program (`hello.c`), its helpers (`udos.h`) and its linker script |
 | `kernel/main.c` | Main function of the higher half, boot information check, initialization order, keyboard echo loop and uptime display |
 | `kernel/vga.c`, `kernel/vga.h` | VGA text console at `0xB8000` with scrolling, backspace, hardware cursor and a status line writer |
 | `kernel/udbl.h` | Boot information structures shared with UDBL |
@@ -62,10 +69,12 @@ The keyboard, the screen console and the uptime display are in the kernel for no
 4. Load the IDT and install the exception handlers.
 5. Initialize physical memory and the heap, and run the memory self-test.
 6. Build the kernel page tables, load them and run the virtual memory self-test.
-7. Remap the PIC and mask every IRQ except the cascade.
+7. Set up the system call entry, with the task state segment loaded earlier by the GDT.
+8. Remap the PIC and mask every IRQ except the cascade.
 8. Start the timer (100 Hz) and unmask IRQ 0.
-9. Initialize the keyboard and unmask IRQ 1.
-10. Enable interrupts.
+10. Initialize the keyboard and unmask IRQ 1.
+11. Enable interrupts.
+12. Start the first user program. When it exits the kernel continues with the keyboard echo loop. See [abi.md](abi.md).
 
 ### Memory management
 
@@ -169,19 +178,19 @@ After the initialization lines the kernel shows the prompt `> ` and echoes what 
 
 ### Tests
 
-`make test` builds and runs host tests for the logic that does not depend on the hardware: `tests/test_kbd_map.c` (translation, Shift, Caps Lock, release and extended codes), `tests/test_charbuf.c` (order, capacity, wraparound) and `tests/test_idt.c` (byte layout of an IDT entry), `tests/test_pmm.c` (frame allocator: ranges, rounding, exhaustion, double free, contiguous runs) and `tests/test_heap.c` (alignment, splitting, merging, double free, exhaustion and a randomized stress run) and `tests/test_boot_tables.c` (the temporary page tables of the entry stub: identity map, direct map and kernel window, and what is not mapped) and `tests/test_vmm.c` (mapping, translation, tables created per path, user bit, large pages, errors, out of memory and destroying a space, using simulated physical memory).
+`make test` builds and runs host tests for the logic that does not depend on the hardware: `tests/test_kbd_map.c` (translation, Shift, Caps Lock, release and extended codes), `tests/test_charbuf.c` (order, capacity, wraparound) and `tests/test_idt.c` (byte layout of an IDT entry), `tests/test_pmm.c` (frame allocator: ranges, rounding, exhaustion, double free, contiguous runs) and `tests/test_heap.c` (alignment, splitting, merging, double free, exhaustion and a randomized stress run) and `tests/test_descriptors.c` and `tests/test_uaccess.c` (see [abi.md](abi.md)), `tests/test_boot_tables.c` (the temporary page tables of the entry stub: identity map, direct map and kernel window, and what is not mapped) and `tests/test_vmm.c` (mapping, translation, tables created per path, user bit, large pages, errors, out of memory and destroying a space, using simulated physical memory).
 
 ## Known limits
 
-- No TSS and no interrupt stack table. A stack overflow in a handler ends in a triple fault.
+- Only the double fault handler has its own stack. A stack overflow elsewhere is reported as a double fault.
 - Only the 8259 PIC is used. APIC and multiple processors are not supported.
 - The keyboard code does not talk to the controller (no LEDs, no layout selection, no error handling).
 - Exceptions are fatal. Nothing is recovered yet.
 - The physical memory manager sees only the first 1 GiB, and the heap does not grow.
-- `vmm_unmap` does not free page tables that become empty. They are freed when the whole space is destroyed. The self-test leaves 2 table frames allocated.
+- `vmm_unmap` does not free page tables that become empty. They are freed when the whole space is destroyed. The self-test leaves 3 table frames allocated.
 - The kernel mappings are writable everywhere, including its own code. There is no separation between code and data yet.
 - The no-execute flag exists in the interface but must not be used yet: the CPU rejects a no-execute entry as a reserved bit fault until `EFER.NXE` is enabled.
-- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). Milestone 5 (virtual memory) ran correctly in QEMU. Milestone 5b (higher half) passes the host tests and was checked by disassembly of the entry stub, by comparing the flat binary with the ELF sections and by the emulated loader, but has not been executed in QEMU yet. The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
+- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). Milestone 5 (virtual memory) ran correctly in QEMU. Milestone 5b (higher half) ran correctly in QEMU. Milestone 6 (system calls and user mode) passes the host tests and was checked by disassembly of the entry code, the setup of the model specific registers and the return to user mode, but has not been executed in QEMU yet. The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
 
 ## Open items
 

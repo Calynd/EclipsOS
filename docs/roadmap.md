@@ -26,7 +26,8 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 | 3 | GDT, IDT, exceptions, PIC, timer, keyboard, uptime display |
 | 4 | Physical memory manager and kernel heap |
 | 5 | Virtual memory manager and own kernel page tables |
-| 5b | Kernel in the higher half, direct map of physical memory, low addresses unmapped (ran in QEMU) |
+| 5b | Kernel in the higher half, direct map of physical memory, low addresses unmapped |
+| 6 | TSS, ring 3, system call entry and a first user program (host tests pass, not yet run in QEMU) |
 
 ## Next: processes, IPC and servers
 
@@ -36,7 +37,6 @@ This document orders the work. The order is **PROPOSED**. The decisions that mus
 
 | Milestone | Content | Visible result | Needs decision |
 |---|---|---|---|
-| 6 | TSS, ring 3 and the system call entry, with a first system call that writes text | A hard-coded function runs in user mode and prints through the system call | D4 |
 | 7 | UDE format, and a loader in the kernel for a UDE image embedded in the kernel | A program in the UDE format runs in its own address space | D6 |
 | 8 | Processes, threads, the scheduler and exit | Two processes alternate on screen | D2 |
 | 9 | IPC and capabilities | Two user processes exchange messages (ping and pong) | D5, D8 |
@@ -52,9 +52,9 @@ Milestones 6 to 9 change only the kernel image. The loader changes at milestone 
 | ID | Decision | Options and consequences | Suggestion | Needed before |
 |---|---|---|---|---|
 | D1 | Kernel architecture | **DECIDED**, D-022: microkernel | | |
-| D2 | Tasking model | **Single task:** one program at a time, like DOS. **Cooperative:** processes yield by themselves. **Preemptive:** the timer switches processes. | Preemptive round robin. The timer interrupt already exists, and user programs with permissions need isolation anyway. A single-task use is just one process. | 8 |
+| D2 | Tasking model | **Single task:** one program at a time. **Cooperative:** processes yield by themselves. **Preemptive:** the timer switches processes. | Preemptive round robin. The timer interrupt already exists, and user programs with permissions need isolation anyway. A single-task use is just one process. | 8 |
 | D3 | Kernel memory layout | **DECIDED**, D-021: higher half | | |
-| D4 | System call mechanism | **`syscall` instruction**, **software interrupt** (a vector) or **call gates**. | The `syscall` instruction, with the register convention written in the ABI specification. | 6 |
+| D4 | System call mechanism (**DECIDED**, D-024: the `syscall` instruction) | **`syscall` instruction**, **software interrupt** (a vector) or **call gates**. | The `syscall` instruction, with the register convention written in the ABI specification. | 6 |
 | D5 | How programs refer to resources | **Capabilities:** handles in a per-process table, received from the parent, with a namespace service that maps names such as `disk:0//` to them. **Handles opened by namespace path in the kernel:** the kernel resolves the names itself. | Capabilities, because IPC endpoints are capabilities in a microkernel. | 9 |
 | D6 | UDE layout | Fixed load address versus relocatable code. Sizes of stack and zero-initialized data. Which header fields are mandatory. | Fixed load address at first, with a header field reserved for relocation. | 7 |
 | D7 | Permission model | Users, `root`, and what is checked (files, namespaces, processes). The UDFS inode has 16 reserved bytes for it. | Postpone until UDSH works. | 13 |

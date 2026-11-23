@@ -21,6 +21,12 @@ void idt_set_handler(uint8_t vector, void *handler)
     idt[vector] = idt_make_entry((uint64_t)(uintptr_t)handler, GDT_KERNEL_CODE, IDT_GATE_INTERRUPT);
 }
 
+void idt_set_handler_ist(uint8_t vector, void *handler, uint8_t ist)
+{
+    idt_set_handler(vector, handler);
+    idt[vector].ist = ist;
+}
+
 void idt_init(void)
 {
     for (unsigned int vector = 0; vector < IDT_ENTRIES; vector++)

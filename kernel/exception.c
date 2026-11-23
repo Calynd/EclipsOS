@@ -2,6 +2,7 @@
 #include "exception.h"
 #include "idt.h"
 #include "interrupt.h"
+#include "tss.h"
 #include "vga.h"
 
 static const char *const exception_names[32] = {
@@ -54,6 +55,8 @@ static __attribute__((noreturn)) void exception_report(unsigned int vector, int 
     vga_puts(" ");
     vga_puts(exception_names[vector]);
     vga_puts("\n");
+    if ((frame->cs & 3) == 3)
+        vga_puts("UDK: FAULT IN USER MODE\n");
     if (has_error)
         report_line("UDK: ERROR CODE ", error_code);
     report_line("UDK: RIP ", frame->rip);
@@ -137,4 +140,5 @@ void exception_init(void)
 
     for (unsigned int vector = 0; vector < 32; vector++)
         idt_set_handler((uint8_t)vector, handlers[vector]);
+    idt_set_handler_ist(8, handlers[8], TSS_DOUBLE_FAULT_IST);
 }

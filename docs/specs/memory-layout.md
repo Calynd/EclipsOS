@@ -6,7 +6,7 @@
 
 | Range | Use |
 |---|---|
-| `0x0000000000000000` to `0x00007FFFFFFFFFFF` | Lower half. Reserved for user programs. Nothing is mapped in it today, so a null pointer access is a page fault. |
+| `0x0000000000000000` to `0x00007FFFFFFFFFFF` | Lower half. Reserved for user programs. Today the demo program is mapped at `0x400000` and its stack ends at `0x00007FFFFFFFF000` (see [abi.md](abi.md)). Everything else is unmapped, so a null pointer access is a page fault. |
 | `0xFFFF800000000000` to `0xFFFF80003FFFFFFF` | Direct map: physical memory from 0 to 1 GiB, writable, 2 MiB pages. `phys_to_virt(p)` is `p + 0xFFFF800000000000`. |
 | `0xFFFFFFFF80000000` to `0xFFFFFFFFBFFFFFFF` | Kernel window: physical memory from 0 to 1 GiB. The kernel image runs here. Virtual address `0xFFFFFFFF80000000 + p` is physical `p`. |
 

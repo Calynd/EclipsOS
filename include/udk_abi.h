@@ -1,0 +1,18 @@
+#ifndef UDK_ABI_H
+#define UDK_ABI_H
+
+#define UDK_SYS_DEBUG_WRITE 0
+#define UDK_SYS_EXIT 1
+#define UDK_SYS_TIME 2
+
+#define UDK_ERR_NO_SYSCALL (-1)
+#define UDK_ERR_BAD_ADDRESS (-2)
+#define UDK_ERR_INVALID (-3)
+
+#define UDK_DEBUG_WRITE_MAX 4096
+
+#define UDK_USER_CODE_BASE 0x0000000000400000ull
+#define UDK_USER_STACK_TOP 0x00007FFFFFFFF000ull
+#define UDK_USER_STACK_SIZE 0x2000ull
+
+#endif

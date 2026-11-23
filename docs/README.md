@@ -27,12 +27,13 @@ Every statement in these documents carries one of these states:
 | [specs/udfs.md](specs/udfs.md) | UDFS on-disk format, tools and limits |
 | [specs/memory-layout.md](specs/memory-layout.md) | Virtual and physical memory layout, entering the higher half |
 | [specs/microkernel.md](specs/microkernel.md) | What the microkernel decision means, and the decisions it needs |
+| [specs/abi.md](specs/abi.md) | System calls, user mode, segments and the task state segment |
 | [specs/udk.md](specs/udk.md) | Kernel entry, build and current state |
 | [specs/udsh.md](specs/udsh.md) | Shell prompt and command set |
 
 ## Building and testing
 
-The Makefile is written for BSD make (**D-023**). On a BSD system `make` is bmake. It uses only features that GNU make also understands.
+The Makefile is written for BSD make, `bmake` (**D-023**). It uses only features that GNU make also understands.
 
 | Command | Purpose |
 |---|---|
@@ -42,7 +43,7 @@ The Makefile is written for BSD make (**D-023**). On a BSD system `make` is bmak
 | `bmake test` | Runs the host tests |
 | `bmake clean` | Removes `build/` |
 
-Tools can be chosen on the command line, for example `bmake KERNEL_CC=gcc13 BOOT_CC=gcc13`. The variables are `KERNEL_CC`, `BOOT_CC`, `HOST_CC`, `LD` and `OBJCOPY`. Extra definitions for the kernel go in `KERNEL_DEFINES`, for example `bmake KERNEL_DEFINES=-DUDK_NULL_TEST run` (run `bmake clean` first, because changed definitions are not tracked).
+Tools can be chosen on the command line, for example `bmake KERNEL_CC=gcc13 BOOT_CC=gcc13`. The variables are `KERNEL_CC`, `BOOT_CC`, `HOST_CC`, `LD` and `OBJCOPY`. Extra definitions for the kernel go in `KERNEL_DEFINES`, for example `bmake KERNEL_DEFINES=-DUDK_NULL_TEST run`, and for the user program in `USER_DEFINES`, for example `bmake USER_DEFINES=-DUSER_TEST=1 run`. Run `bmake clean` first, because changed definitions are not tracked.
 
 Notes:
 

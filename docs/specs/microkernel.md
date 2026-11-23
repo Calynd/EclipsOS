@@ -53,7 +53,7 @@ Existing decisions that change in meaning:
 | ID | Effect of D-022 |
 |---|---|
 | D2 (tasking model) | Still needed before milestone 8. The suggestion (preemptive round robin) stands. |
-| D4 (system call mechanism) | Still needed before milestone 6. The suggestion (the `syscall` instruction) stands. |
+| D4 (system call mechanism) | Decided (D-024): the `syscall` instruction. See [abi.md](abi.md). |
 | D5 (how programs refer to resources) | The natural answer is now capabilities, because IPC endpoints are capabilities. A namespace service maps names like `disk:0//` to them. |
 | D6 (UDE layout) | Needed before the kernel can load the first servers, whoever carries them. |
 | D7 (permission model) | Capabilities make part of the model. Users are an identity attached to a session (D-020), served by a service. Can wait until UDSH. |

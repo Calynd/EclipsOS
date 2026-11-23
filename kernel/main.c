@@ -6,8 +6,10 @@
 #include "keyboard.h"
 #include "memory.h"
 #include "pic.h"
+#include "syscall.h"
 #include "timer.h"
 #include "udbl.h"
+#include "user.h"
 #include "vm.h"
 #include "vga.h"
 
@@ -62,7 +64,7 @@ static void format_uptime(char *out, uint64_t seconds)
     out[11] = 0;
 }
 
-static void echo_loop(void)
+static __attribute__((noreturn)) void echo_loop(void)
 {
     char uptime[12];
     uint64_t last_second = (uint64_t)-1;
@@ -131,6 +133,9 @@ void udk_main(const struct udbl_info *info)
     idt_init();
     exception_init();
     vga_puts("UDK: IDT LOADED, EXCEPTIONS 0-31 HANDLED\n");
+
+    syscall_init();
+    vga_puts("UDK: SYSTEM CALL ENTRY READY, TSS LOADED, DOUBLE FAULT STACK SET\n");
 
     if (memory_init(info) != 0) {
         vga_puts("UDK: MEMORY INITIALIZATION FAILED\n");
@@ -208,6 +213,8 @@ void udk_main(const struct udbl_info *info)
     __asm__ volatile("ud2");
 #endif
 
+    vga_puts("UDK: STARTING USER PROGRAM\n");
+    if (user_run(echo_loop) != 0)
+        vga_puts("UDK: USER PROGRAM START FAILED\n");
     echo_loop();
-    halt();
 }
