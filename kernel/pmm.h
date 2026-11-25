@@ -1,5 +1,5 @@
-#ifndef UDK_PMM_H
-#define UDK_PMM_H
+#ifndef ECLIPS_PMM_H
+#define ECLIPS_PMM_H
 
 #include <stddef.h>
 #include <stdint.h>

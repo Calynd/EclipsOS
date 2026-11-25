@@ -8,12 +8,12 @@ STAGE2_SECTORS = 8
 KERNEL_MAX_SECTORS = 896
 IMAGE_SIZE_KIB = 1440
 BOOT_DOTS = 18
-VOLUME_LABEL = UDOS
+VOLUME_LABEL = EclipsOS
 KERNEL_DEFINES ?=
 USER_DEFINES ?=
 
 BUILD = build
-IMAGE = ${BUILD}/udos.img
+IMAGE = ${BUILD}/eclipsos.img
 ROOTFS = ${BUILD}/rootfs
 MKUDFS = ${BUILD}/tools/mkudfs
 UDFSCK = ${BUILD}/tools/udfsck
@@ -38,12 +38,12 @@ KERNEL_HEADERS = \
     kernel/timer.h \
     kernel/tss.h \
     kernel/uaccess.h \
-    kernel/udbl.h \
+    kernel/monlod.h \
     kernel/user.h \
     kernel/vga.h \
     kernel/vm.h \
     kernel/vmm.h \
-    include/udk_abi.h
+    include/eclips_abi.h
 
 KERNEL_OBJS = \
     ${BUILD}/kernel/entry.o \
@@ -120,7 +120,7 @@ ${BUILD}/stage2.bin: ${BUILD}/stage2.o
 	${LD} -m elf_x86_64 --oformat binary -Ttext 0x7E00 -o ${BUILD}/stage2.bin ${BUILD}/stage2.o
 	@test $$(( $$(wc -c < ${BUILD}/stage2.bin) )) -le $$(( ${STAGE2_SECTORS} * 512 )) || (echo "stage2 does not fit in ${STAGE2_SECTORS} sectors" && exit 1)
 
-${BUILD}/user/hello.o: user/hello.c user/udos.h include/udk_abi.h
+${BUILD}/user/hello.o: user/hello.c user/eclips.h include/eclips_abi.h
 	mkdir -p ${BUILD}/user
 	${KERNEL_CC} ${USER_CFLAGS} -c -o ${BUILD}/user/hello.o user/hello.c
 
@@ -216,27 +216,27 @@ ${BUILD}/kernel/user.o: kernel/user.c ${KERNEL_HEADERS}
 
 ${BUILD}/kernel.elf: ${KERNEL_OBJS} kernel/kernel.ld
 	${LD} -m elf_x86_64 -nostdlib -T kernel/kernel.ld -o ${BUILD}/kernel.elf ${KERNEL_OBJS}
-	@test "$$(nm ${BUILD}/kernel.elf | awk '/ udk_entry$$/ {print $$1}')" = "0000000000100000" || (echo "udk_entry must be at 0x100000" && exit 1)
-	@nm ${BUILD}/kernel.elf | awk '/ udk_main$$/ {print $$1}' | grep -q '^ffffffff80' || (echo "udk_main must be in the higher half" && exit 1)
+	@test "$$(nm ${BUILD}/kernel.elf | awk '/ eclips_entry$$/ {print $$1}')" = "0000000000100000" || (echo "eclips_entry must be at 0x100000" && exit 1)
+	@nm ${BUILD}/kernel.elf | awk '/ eclips_main$$/ {print $$1}' | grep -q '^ffffffff80' || (echo "eclips_main must be in the higher half" && exit 1)
 
 ${BUILD}/kernel.bin: ${BUILD}/kernel.elf
 	${OBJCOPY} -O binary ${BUILD}/kernel.elf ${BUILD}/kernel.bin
 	@test $$(( $$(wc -c < ${BUILD}/kernel.bin) )) -le $$(( ${KERNEL_MAX_SECTORS} * 512 )) || (echo "kernel does not fit in ${KERNEL_MAX_SECTORS} sectors" && exit 1)
 
-${BUILD}/udbl.bin: ${BUILD}/stage1.bin ${BUILD}/stage2.bin
-	dd if=/dev/zero of=${BUILD}/udbl.bin bs=512 count=16 2>/dev/null
-	dd if=${BUILD}/stage1.bin of=${BUILD}/udbl.bin conv=notrunc 2>/dev/null
-	dd if=${BUILD}/stage2.bin of=${BUILD}/udbl.bin bs=512 seek=1 conv=notrunc 2>/dev/null
+${BUILD}/monlod.bin: ${BUILD}/stage1.bin ${BUILD}/stage2.bin
+	dd if=/dev/zero of=${BUILD}/monlod.bin bs=512 count=16 2>/dev/null
+	dd if=${BUILD}/stage1.bin of=${BUILD}/monlod.bin conv=notrunc 2>/dev/null
+	dd if=${BUILD}/stage2.bin of=${BUILD}/monlod.bin bs=512 seek=1 conv=notrunc 2>/dev/null
 
-${BUILD}/rootfs.stamp: ${BUILD}/udbl.bin ${BUILD}/kernel.bin
+${BUILD}/rootfs.stamp: ${BUILD}/monlod.bin ${BUILD}/kernel.bin
 	rm -rf ${ROOTFS}
 	mkdir -p ${ROOTFS}/sys/boot ${ROOTFS}/bin ${ROOTFS}/usr/root ${ROOTFS}/conf ${ROOTFS}/tmp ${ROOTFS}/dev
 	cp ${BUILD}/kernel.bin ${ROOTFS}/sys/boot/kernel
-	cp ${BUILD}/udbl.bin ${ROOTFS}/sys/boot/udbl
+	cp ${BUILD}/monlod.bin ${ROOTFS}/sys/boot/monlod
 	touch ${BUILD}/rootfs.stamp
 
-${IMAGE}: ${MKUDFS} ${BUILD}/udbl.bin ${BUILD}/rootfs.stamp
-	${MKUDFS} --boot-area ${BUILD}/udbl.bin --root ${ROOTFS} --size-kib ${IMAGE_SIZE_KIB} --label ${VOLUME_LABEL} -o ${IMAGE}
+${IMAGE}: ${MKUDFS} ${BUILD}/monlod.bin ${BUILD}/rootfs.stamp
+	${MKUDFS} --boot-area ${BUILD}/monlod.bin --root ${ROOTFS} --size-kib ${IMAGE_SIZE_KIB} --label ${VOLUME_LABEL} -o ${IMAGE}
 
 check: ${IMAGE} ${UDFSCK}
 	${UDFSCK} ${IMAGE}
@@ -274,7 +274,7 @@ ${BUILD}/tests/test_uaccess: tests/test_uaccess.c kernel/uaccess.c kernel/vmm.c 
 	mkdir -p ${BUILD}/tests
 	${HOST_CC} ${HOST_CFLAGS} -Ikernel -o ${BUILD}/tests/test_uaccess tests/test_uaccess.c kernel/uaccess.c kernel/vmm.c
 
-${BUILD}/tests/test_descriptors: tests/test_descriptors.c kernel/gdt.h kernel/tss.h kernel/syscall.h kernel/uaccess.h include/udk_abi.h
+${BUILD}/tests/test_descriptors: tests/test_descriptors.c kernel/gdt.h kernel/tss.h kernel/syscall.h kernel/uaccess.h include/eclips_abi.h
 	mkdir -p ${BUILD}/tests
 	${HOST_CC} ${HOST_CFLAGS} -Ikernel -o ${BUILD}/tests/test_descriptors tests/test_descriptors.c
 

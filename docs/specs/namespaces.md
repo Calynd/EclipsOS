@@ -24,7 +24,7 @@ ram:0//
 net:0//
 ```
 
-The current namespace appears in the UDSH prompt:
+The current namespace appears in the ESH prompt:
 
 ```text
 disk:0//>
@@ -35,7 +35,7 @@ ram:0//>
 net:0//>
 ```
 
-Drive letters such as `C:\` or `A:\` are not used.
+EclipsOS does not use drive letters.
 
 ## Open items
 

@@ -1,5 +1,5 @@
-#ifndef UDK_KBD_MAP_H
-#define UDK_KBD_MAP_H
+#ifndef ECLIPS_KBD_MAP_H
+#define ECLIPS_KBD_MAP_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef UDK_BOOT_TABLES_H
-#define UDK_BOOT_TABLES_H
+#ifndef ECLIPS_BOOT_TABLES_H
+#define ECLIPS_BOOT_TABLES_H
 
 #include <stdint.h>
 #include "layout.h"

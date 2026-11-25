@@ -1,5 +1,5 @@
-#ifndef UDK_VM_H
-#define UDK_VM_H
+#ifndef ECLIPS_VM_H
+#define ECLIPS_VM_H
 
 #include <stdint.h>
 #include "vmm.h"

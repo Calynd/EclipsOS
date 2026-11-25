@@ -19,18 +19,18 @@ static struct pmm pmm;
 static struct heap heap;
 static size_t heap_initial_free;
 
-int memory_init(const struct udbl_info *info)
+int memory_init(const struct monlod_info *info)
 {
     uint64_t heap_physical;
 
     pmm_init(&pmm, frame_bitmap, MEMORY_FRAMES);
 
     for (uint32_t i = 0; i < info->mmap_count; i++) {
-        const struct udbl_mmap_entry *entry = &info->mmap[i];
+        const struct monlod_mmap_entry *entry = &info->mmap[i];
         uint64_t start = entry->base;
         uint64_t end = entry->base + entry->length;
 
-        if (entry->type != UDBL_MMAP_USABLE || entry->length == 0)
+        if (entry->type != MONLOD_MMAP_USABLE || entry->length == 0)
             continue;
         if (end < start)
             end = UINT64_MAX;

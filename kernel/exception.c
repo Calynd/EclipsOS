@@ -50,25 +50,25 @@ static void report_line(const char *label, uint64_t value)
 static __attribute__((noreturn)) void exception_report(unsigned int vector, int has_error, uint64_t error_code,
                                                        const struct interrupt_frame *frame)
 {
-    vga_puts("\nUDK: EXCEPTION ");
+    vga_puts("\nKERNEL: EXCEPTION ");
     vga_put_dec(vector);
     vga_puts(" ");
     vga_puts(exception_names[vector]);
     vga_puts("\n");
     if ((frame->cs & 3) == 3)
-        vga_puts("UDK: FAULT IN USER MODE\n");
+        vga_puts("KERNEL: FAULT IN USER MODE\n");
     if (has_error)
-        report_line("UDK: ERROR CODE ", error_code);
-    report_line("UDK: RIP ", frame->rip);
-    report_line("UDK: CS ", frame->cs);
-    report_line("UDK: RFLAGS ", frame->rflags);
-    report_line("UDK: RSP ", frame->rsp);
+        report_line("KERNEL: ERROR CODE ", error_code);
+    report_line("KERNEL: RIP ", frame->rip);
+    report_line("KERNEL: CS ", frame->cs);
+    report_line("KERNEL: RFLAGS ", frame->rflags);
+    report_line("KERNEL: RSP ", frame->rsp);
     if (vector == 14) {
         uint64_t address;
 
         __asm__ volatile("movq %%cr2, %0" : "=r"(address));
-        report_line("UDK: FAULT ADDRESS ", address);
-        vga_puts("UDK: ");
+        report_line("KERNEL: FAULT ADDRESS ", address);
+        vga_puts("KERNEL: ");
         vga_puts((error_code & 1) ? "PROTECTION VIOLATION" : "PAGE NOT PRESENT");
         vga_puts((error_code & 2) ? ", WRITE" : ", READ");
         vga_puts((error_code & 4) ? ", USER" : ", SUPERVISOR");
@@ -78,7 +78,7 @@ static __attribute__((noreturn)) void exception_report(unsigned int vector, int 
             vga_puts(", INSTRUCTION FETCH");
         vga_puts("\n");
     }
-    vga_puts("UDK: SYSTEM HALTED\n");
+    vga_puts("KERNEL: SYSTEM HALTED\n");
     for (;;)
         __asm__ volatile("cli; hlt");
 }

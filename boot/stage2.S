@@ -114,7 +114,7 @@ memory_ready:
     jmp prompt_loop
 
 a20_enabled:
-    mov dword ptr [INFO_BASE], 0x4C424455
+    mov dword ptr [INFO_BASE], 0x444C4E4D
     mov word ptr [INFO_BASE + 4], 1
     mov al, byte ptr [boot_drive]
     mov byte ptr [INFO_BASE + 6], al
@@ -645,7 +645,7 @@ msg_unknown:
     .asciz "UNKNOWN COMMAND\r\n"
 
 msg_loading:
-    .asciz "STARTING UDOS KERNEL"
+    .asciz "STARTING ECLIPSOS KERNEL"
 
 msg_ok:
     .asciz "OK\r\n"
@@ -654,22 +654,22 @@ msg_failed:
     .asciz "FAILED\r\n"
 
 msg_err_disk:
-    .asciz "UDBL: DISK READ ERROR\r\n"
+    .asciz "MONLOD: DISK READ ERROR\r\n"
 
 msg_err_fs:
-    .asciz "UDBL: BAD FILE SYSTEM\r\n"
+    .asciz "MONLOD: BAD FILE SYSTEM\r\n"
 
 msg_err_not_found:
-    .asciz "UDBL: KERNEL NOT FOUND\r\n"
+    .asciz "MONLOD: KERNEL NOT FOUND\r\n"
 
 msg_err_invalid:
-    .asciz "UDBL: KERNEL FILE INVALID\r\n"
+    .asciz "MONLOD: KERNEL FILE INVALID\r\n"
 
 msg_memory_error:
-    .asciz "UDBL: MEMORY MAP ERROR\r\n"
+    .asciz "MONLOD: MEMORY MAP ERROR\r\n"
 
 msg_a20_error:
-    .asciz "UDBL: A20 ERROR\r\n"
+    .asciz "MONLOD: A20 ERROR\r\n"
 
 cmd_start:
     .asciz "start"

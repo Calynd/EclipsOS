@@ -34,13 +34,13 @@ The entry code saves the user stack pointer, switches to the kernel trap stack, 
 | 1 | `EXIT` | `RDI` exit code | Does not return. |
 | 2 | `TIME` | none | Ticks of the system timer since start (100 per second). |
 
-Errors (`include/udk_abi.h`):
+Errors (`include/eclips_abi.h`):
 
 | Value | Name | Meaning |
 |---|---|---|
-| -1 | `UDK_ERR_NO_SYSCALL` | Unknown system call number |
-| -2 | `UDK_ERR_BAD_ADDRESS` | A user pointer is not valid |
-| -3 | `UDK_ERR_INVALID` | An argument is not valid |
+| -1 | `ECLIPS_ERR_NO_SYSCALL` | Unknown system call number |
+| -2 | `ECLIPS_ERR_BAD_ADDRESS` | A user pointer is not valid |
+| -3 | `ECLIPS_ERR_INVALID` | An argument is not valid |
 
 ## User pointers
 
@@ -80,23 +80,23 @@ The kernel maps the program and a stack in the lower half, builds a return frame
 
 ## The first user program
 
-`user/hello.c` is linked by `user/user.ld` at `0x400000` into a flat binary, and `kernel/user_image.S` embeds that binary in the kernel image. It writes two lines, reads the timer and exits. The linker script refuses a program with writable data or zero-initialized data, because only code and a stack are mapped. All this is replaced by the UDE loader (milestone 7).
+`user/hello.c` is linked by `user/user.ld` at `0x400000` into a flat binary, and `kernel/user_image.S` embeds that binary in the kernel image. It writes two lines, reads the timer and exits. The linker script refuses a program with writable data or zero-initialized data, because only code and a stack are mapped. All this is replaced by the EE loader (milestone 7).
 
 When the program exits the kernel prints the exit code, unmaps and frees the pages, and goes on with the keyboard echo loop. The page tables created for the program stay allocated.
 
 ## Expected output
 
-With the default QEMU memory, after `UDK: INTERRUPTS ENABLED`:
+With the default QEMU memory, after `KERNEL: INTERRUPTS ENABLED`:
 
 ```text
-UDK: STARTING USER PROGRAM
+KERNEL: STARTING USER PROGRAM
 USER: HELLO FROM USER MODE
 USER: UPTIME TICKS <n>
-UDK: USER PROGRAM EXITED WITH CODE 0
-UDK: USER MEMORY RELEASED, 32189 FRAMES FREE
+KERNEL: USER PROGRAM EXITED WITH CODE 0
+KERNEL: USER MEMORY RELEASED, 32189 FRAMES FREE
 ```
 
-The free frame count is 8 below the 32197 shown after the page tables: the self-test left 3 table frames and the user program 5 (three for the stack path and two for the code path). It can differ by a frame with another compiler. Earlier, a new line appears among the initialization lines: `UDK: SYSTEM CALL ENTRY READY, TSS LOADED, DOUBLE FAULT STACK SET`.
+The free frame count is 8 below the 32197 shown after the page tables: the self-test left 3 table frames and the user program 5 (three for the stack path and two for the code path). It can differ by a frame with another compiler. Earlier, a new line appears among the initialization lines: `KERNEL: SYSTEM CALL ENTRY READY, TSS LOADED, DOUBLE FAULT STACK SET`.
 
 ## Tests
 

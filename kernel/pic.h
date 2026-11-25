@@ -1,5 +1,5 @@
-#ifndef UDK_PIC_H
-#define UDK_PIC_H
+#ifndef ECLIPS_PIC_H
+#define ECLIPS_PIC_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef UDK_HEAP_H
-#define UDK_HEAP_H
+#ifndef ECLIPS_HEAP_H
+#define ECLIPS_HEAP_H
 
 #include <stddef.h>
 #include <stdint.h>

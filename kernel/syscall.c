@@ -6,7 +6,7 @@
 #include "timer.h"
 #include "tss.h"
 #include "uaccess.h"
-#include "udk_abi.h"
+#include "eclips_abi.h"
 #include "user.h"
 #include "vga.h"
 #include "vm.h"
@@ -65,8 +65,8 @@ static long debug_write(uint64_t user_pointer, uint64_t length)
     char buffer[128];
     uint64_t done = 0;
 
-    if (length > UDK_DEBUG_WRITE_MAX)
-        return UDK_ERR_INVALID;
+    if (length > ECLIPS_DEBUG_WRITE_MAX)
+        return ECLIPS_ERR_INVALID;
 
     while (done < length) {
         size_t chunk = (size_t)(length - done);
@@ -74,7 +74,7 @@ static long debug_write(uint64_t user_pointer, uint64_t length)
         if (chunk > sizeof buffer)
             chunk = sizeof buffer;
         if (uaccess_copy_from_user(vm_kernel_space(), buffer, user_pointer + done, chunk) != 0)
-            return UDK_ERR_BAD_ADDRESS;
+            return ECLIPS_ERR_BAD_ADDRESS;
         for (size_t i = 0; i < chunk; i++) {
             char c = buffer[i];
 
@@ -89,13 +89,13 @@ static long debug_write(uint64_t user_pointer, uint64_t length)
 long syscall_dispatch(struct syscall_frame *frame)
 {
     switch (frame->rax) {
-    case UDK_SYS_DEBUG_WRITE:
+    case ECLIPS_SYS_DEBUG_WRITE:
         return debug_write(frame->rdi, frame->rsi);
-    case UDK_SYS_EXIT:
+    case ECLIPS_SYS_EXIT:
         user_exit((int64_t)frame->rdi);
-    case UDK_SYS_TIME:
+    case ECLIPS_SYS_TIME:
         return (long)timer_ticks();
     default:
-        return UDK_ERR_NO_SYSCALL;
+        return ECLIPS_ERR_NO_SYSCALL;
     }
 }

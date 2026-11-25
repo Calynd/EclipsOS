@@ -1,5 +1,5 @@
-#ifndef UDK_CHARBUF_H
-#define UDK_CHARBUF_H
+#ifndef ECLIPS_CHARBUF_H
+#define ECLIPS_CHARBUF_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef UDK_VGA_H
-#define UDK_VGA_H
+#ifndef ECLIPS_VGA_H
+#define ECLIPS_VGA_H
 
 #include <stdint.h>
 

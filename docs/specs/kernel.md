@@ -1,12 +1,12 @@
-# UDK
+# Eclips Kernel
 
-UDK is the UDOS kernel. It is a microkernel (D-022). What that means for the code is in [microkernel.md](microkernel.md).
+Eclips Kernel is the EclipsOS kernel. It is a microkernel (D-022). What that means for the code is in [microkernel.md](microkernel.md).
 
 ## Entry
 
-**PROPOSED.** UDBL enters UDK at physical `0x100000` in 64-bit mode. See [udbl.md](udbl.md) for the handoff contract.
+**PROPOSED.** Monlod enters Eclips Kernel at physical `0x100000` in 64-bit mode. See [monlod.md](monlod.md) for the handoff contract.
 
-The entry point is `udk_entry` in `kernel/entry.c`, linked at its physical address. It builds temporary page tables, switches to them and jumps to `udk_main(const struct udbl_info *info)` in `kernel/main.c`, which runs in the higher half. See [memory-layout.md](memory-layout.md).
+The entry point is `eclips_entry` in `kernel/entry.c`, linked at its physical address. It builds temporary page tables, switches to them and jumps to `eclips_main(const struct monlod_info *info)` in `kernel/main.c`, which runs in the higher half. See [memory-layout.md](memory-layout.md).
 
 ## Build
 
@@ -22,9 +22,9 @@ Consequences:
 
 - `-mgeneral-regs-only` keeps the compiler from using SSE registers, which are not enabled. It is also what allows interrupt handlers written in C.
 - `-mno-red-zone` is required because interrupts use the kernel stack.
-- The flat binary does not contain `.bss`, the kernel stack or the boot page tables. The kernel zeroes `.bss` at the start of `udk_main`, using `__bss_start` and `__bss_end` from the linker script. The entry stub zeroes the boot page tables itself.
+- The flat binary does not contain `.bss`, the kernel stack or the boot page tables. The kernel zeroes `.bss` at the start of `eclips_main`, using `__bss_start` and `__bss_end` from the linker script. The entry stub zeroes the boot page tables itself.
 - The entry stub is compiled without the kernel code model and may not call anything outside its own section.
-- The kernel image can have at most 896 sectors (see [udbl.md](udbl.md)).
+- The kernel image can have at most 896 sectors (see [monlod.md](monlod.md)).
 
 ## Current state (milestone 6)
 
@@ -39,10 +39,10 @@ Consequences:
 | `kernel/uaccess.c`, `kernel/uaccess.h` | Safe copy from user memory (pure logic) |
 | `kernel/user.c`, `kernel/user.h` | Starts and ends the first user program |
 | `kernel/user_image.S` | Embeds the user program binary in the kernel image |
-| `user/` | The first user program (`hello.c`), its helpers (`udos.h`) and its linker script |
+| `user/` | The first user program (`hello.c`), its helpers (`eclips.h`) and its linker script |
 | `kernel/main.c` | Main function of the higher half, boot information check, initialization order, keyboard echo loop and uptime display |
 | `kernel/vga.c`, `kernel/vga.h` | VGA text console at `0xB8000` with scrolling, backspace, hardware cursor and a status line writer |
-| `kernel/udbl.h` | Boot information structures shared with UDBL |
+| `kernel/monlod.h` | Boot information structures shared with Monlod |
 | `kernel/gdt.c`, `kernel/gdt.h` | Kernel GDT: null, 64-bit code (`0x08`), data (`0x10`) |
 | `kernel/idt.c`, `kernel/idt.h` | IDT with 256 interrupt gates. Unused vectors point to a handler that only returns. |
 | `kernel/exception.c`, `kernel/exception.h` | Handlers for vectors 0 to 31 |
@@ -53,7 +53,7 @@ Consequences:
 | `kernel/charbuf.c`, `kernel/charbuf.h` | Ring buffer for characters (pure logic) |
 | `kernel/pmm.c`, `kernel/pmm.h` | Physical frame allocator (bitmap, pure logic) |
 | `kernel/heap.c`, `kernel/heap.h` | Kernel heap allocator (pure logic) |
-| `kernel/memory.c`, `kernel/memory.h` | Builds the allocators from the UDBL memory map. `kmalloc`, `kfree`, frame allocation, `phys_to_virt`, self-test. |
+| `kernel/memory.c`, `kernel/memory.h` | Builds the allocators from the Monlod memory map. `kmalloc`, `kfree`, frame allocation, `phys_to_virt`, self-test. |
 | `kernel/vmm.c`, `kernel/vmm.h` | Page table management for one address space: map, map large, unmap, translate, destroy (pure logic) |
 | `kernel/vm.c`, `kernel/vm.h` | The kernel address space: builds the kernel page tables, loads them and runs the self-test |
 | `kernel/io.h`, `kernel/interrupt.h` | Port I/O, interrupt frame and `sti`/`cli`/`hlt` helpers |
@@ -83,21 +83,21 @@ The keyboard, the screen console and the uptime display are in the kernel for no
 | Item | Behavior |
 |---|---|
 | Frames | 4 KiB, tracked with a bitmap (1 bit per frame, set means used). |
-| Managed range | From 1 MiB up to 1 GiB. Memory below 1 MiB (BIOS data, UDBL structures, the boot stack and the current page tables) is never handed out. Memory above 1 GiB is not reachable until the kernel has its own page tables. |
-| Source of free memory | The usable entries of the UDBL memory map, clipped to the managed range. |
+| Managed range | From 1 MiB up to 1 GiB. Memory below 1 MiB (BIOS data, Monlod structures, the boot stack and the current page tables) is never handed out. Memory above 1 GiB is not reachable until the kernel has its own page tables. |
+| Source of free memory | The usable entries of the Monlod memory map, clipped to the managed range. |
 | Reserved | The kernel image, from `__kernel_start` to `__kernel_end` (end of `.bss`, page aligned). |
 | Allocation | Next-fit for single frames, first-fit for contiguous runs. A failed allocation returns `PMM_NO_FRAME`. Freeing detects unaligned, out of range and double frees. |
 | Kernel heap | 1 MiB of contiguous frames. First-fit blocks with 16-byte headers and 16-byte alignment, split on allocation and merged on free. |
 | Address conversion | `phys_to_virt` adds the direct map base (`0xFFFF800000000000`). `virt_to_phys` handles direct map and kernel window addresses. |
 
-At boot the self-test allocates and frees frames, writes to them, checks that a double free is rejected and exercises `kmalloc` and `kfree`. It prints `UDK: MEMORY SELF-TEST OK`, or `UDK: MEMORY SELF-TEST FAILED, CODE n` and halts.
+At boot the self-test allocates and frees frames, writes to them, checks that a double free is rejected and exercises `kmalloc` and `kfree`. It prints `KERNEL: MEMORY SELF-TEST OK`, or `KERNEL: MEMORY SELF-TEST FAILED, CODE n` and halts.
 
 With the default QEMU memory (128 MB) the expected lines are:
 
 ```text
-UDK: PHYSICAL MEMORY 32212 FRAMES FREE (128848 KIB)
-UDK: KERNEL HEAP 1024 KIB
-UDK: MEMORY SELF-TEST OK
+KERNEL: PHYSICAL MEMORY 32212 FRAMES FREE (128848 KIB)
+KERNEL: KERNEL HEAP 1024 KIB
+KERNEL: MEMORY SELF-TEST OK
 ```
 
 The count comes from the second usable region of the memory map (`0x100000` to `0x7FE0000`, 32480 frames) minus 12 frames of kernel image and 256 frames of heap.
@@ -120,10 +120,10 @@ The self-test maps a frame at `0x200000000` (in the lower half), writes through 
 The expected lines are below. The numbers depend on the size of the kernel image, which is rounded up to whole frames, so they can be one or two frames away on another compiler. With the default QEMU memory (128 MB) and the reference build, the kernel image is 22 frames:
 
 ```text
-UDK: RUNNING IN THE HIGHER HALF AT 0xFFFFFFFF801000E0
-UDK: PHYSICAL MEMORY 32202 FRAMES FREE (128808 KIB)
-UDK: PAGE TABLES LOADED, LOW ADDRESSES UNMAPPED, 32197 FRAMES FREE
-UDK: VIRTUAL MEMORY SELF-TEST OK
+KERNEL: RUNNING IN THE HIGHER HALF AT 0xFFFFFFFF801000E0
+KERNEL: PHYSICAL MEMORY 32202 FRAMES FREE (128808 KIB)
+KERNEL: PAGE TABLES LOADED, LOW ADDRESSES UNMAPPED, 32197 FRAMES FREE
+KERNEL: VIRTUAL MEMORY SELF-TEST OK
 ```
 
 The address on the first line starts with `0xFFFFFFFF8010`. The 5 frames of the final tables are a PML4, two PDPTs and two PDs (the direct map and the kernel window).
@@ -132,12 +132,12 @@ To see a page fault report, build with one of these tests:
 
 ```text
 make clean
-make KERNEL_DEFINES=-DUDK_NULL_TEST run
+make KERNEL_DEFINES=-DECLIPS_NULL_TEST run
 make clean
-make KERNEL_DEFINES=-DUDK_PAGEFAULT_TEST run
+make KERNEL_DEFINES=-DECLIPS_PAGEFAULT_TEST run
 ```
 
-The first reads address 0 and must report `UDK: EXCEPTION 14 PAGE FAULT`, `UDK: FAULT ADDRESS 0x0` and `UDK: PAGE NOT PRESENT, READ, SUPERVISOR`. The second reads the address that the self-test unmapped and must report `UDK: FAULT ADDRESS 0x200000000` with the same decoding.
+The first reads address 0 and must report `KERNEL: EXCEPTION 14 PAGE FAULT`, `KERNEL: FAULT ADDRESS 0x0` and `KERNEL: PAGE NOT PRESENT, READ, SUPERVISOR`. The second reads the address that the self-test unmapped and must report `KERNEL: FAULT ADDRESS 0x200000000` with the same decoding.
 
 ### Interrupts
 
@@ -155,16 +155,16 @@ Handlers are written in C with the compiler's `interrupt` attribute. There is no
 
 ### Exception report
 
-For an exception the kernel prints the vector number and name, the error code (for the vectors that have one), `RIP`, `CS`, `RFLAGS` and `RSP`, and for a page fault the address from `CR2`. Then it prints `UDK: SYSTEM HALTED` and stops.
+For an exception the kernel prints the vector number and name, the error code (for the vectors that have one), `RIP`, `CS`, `RFLAGS` and `RSP`, and for a page fault the address from `CR2`. Then it prints `KERNEL: SYSTEM HALTED` and stops.
 
 To test it, build with a fault at the end of the initialization:
 
 ```text
 make clean
-make KERNEL_DEFINES=-DUDK_FAULT_TEST run
+make KERNEL_DEFINES=-DECLIPS_FAULT_TEST run
 ```
 
-The expected result is `UDK: EXCEPTION 6 INVALID OPCODE`.
+The expected result is `KERNEL: EXCEPTION 6 INVALID OPCODE`.
 
 ### Keyboard
 
@@ -174,7 +174,7 @@ The US layout is a stand-in. The layout to support is **OPEN** (see [../decision
 
 ### Screen behavior
 
-After the initialization lines the kernel shows the prompt `> ` and echoes what is typed (up to 70 characters per line, Backspace edits the line, Enter starts a new line). The top right corner shows the uptime as `UP hh:mm:ss`, updated once per second from the timer. This is only a test of the timer and the keyboard until UDSH exists.
+After the initialization lines the kernel shows the prompt `> ` and echoes what is typed (up to 70 characters per line, Backspace edits the line, Enter starts a new line). The top right corner shows the uptime as `UP hh:mm:ss`, updated once per second from the timer. This is only a test of the timer and the keyboard until ESH exists.
 
 ### Tests
 
@@ -190,7 +190,7 @@ After the initialization lines the kernel shows the prompt `> ` and echoes what 
 - `vmm_unmap` does not free page tables that become empty. They are freed when the whole space is destroyed. The self-test leaves 3 table frames allocated.
 - The kernel mappings are writable everywhere, including its own code. There is no separation between code and data yet.
 - The no-execute flag exists in the interface but must not be used yet: the CPU rejects a no-execute entry as a reserved bit fault until `EFER.NXE` is enabled.
-- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). Milestone 5 (virtual memory) ran correctly in QEMU. Milestone 5b (higher half) ran correctly in QEMU. Milestone 6 (system calls and user mode) passes the host tests and was checked by disassembly of the entry code, the setup of the model specific registers and the return to user mode, but has not been executed in QEMU yet. The exception report has not been executed yet (`-DUDK_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
+- Status: milestone 3 (GDT, IDT, PIC, timer with the uptime display, keyboard echo) ran correctly in QEMU. Milestone 4 (memory) ran correctly in QEMU with the expected values (32212 frames free, 1024 KiB heap, self-test OK). Milestone 5 (virtual memory) ran correctly in QEMU. Milestone 5b (higher half) ran correctly in QEMU. Milestone 6 (system calls and user mode) passes the host tests and was checked by disassembly of the entry code, the setup of the model specific registers and the return to user mode, but has not been executed in QEMU yet. The exception report has not been executed yet (`-DECLIPS_FAULT_TEST`). The code was also checked by disassembly (no SSE instructions, handler stack frames, GDT reload sequence) and by the host tests.
 
 ## Open items
 

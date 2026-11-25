@@ -1,14 +1,14 @@
 # UDFS: Unified Disk File System
 
-UDFS is the native file system of UDOS. The name is fixed (D-001). It must not be confused with UDF (Universal Disk Format).
+UDFS is the native file system of EclipsOS. The name is fixed (D-001).
 
-Everything in this document is **PROPOSED** unless marked otherwise. It is a first design (version 1.0) meant to be small enough for a real mode boot loader to read, and to be extended later. UDFS is an independent design. It is not derived from any other file system, including the one of the KOREX project. From KOREX only the working method was reused: specification first, tools on the host, automated checks, then the driver.
+Everything in this document is **PROPOSED** unless marked otherwise. It is a first design (version 1.0) meant to be small enough for a real mode boot loader to read, and to be extended later. UDFS is an independent design with its own structures. It is built specification first, with tools on the host and automated checks before the driver.
 
 ## Goals of version 1
 
 | Goal | Consequence |
 |---|---|
-| UDBL must find and read the kernel by path | Simple, fixed-size structures. No variable-length records. |
+| Monlod must find and read the kernel by path | Simple, fixed-size structures. No variable-length records. |
 | Tools must run on the host | `mkudfs` creates volumes and `udfsck` verifies them, both in C. |
 | Room to grow | Version fields, flags, reserved bytes and a block size field. |
 
@@ -25,14 +25,14 @@ Not in version 1 (**OPEN**): permissions, hard links between directories, journa
 
 | LBA | Content |
 |---|---|
-| 0 | UDBL Stage 1 (boot sector) |
-| 1 to 15 | UDBL Stage 2 and free space of the boot area |
+| 0 | Monlod Stage 1 (boot sector) |
+| 1 to 15 | Monlod Stage 2 and free space of the boot area |
 | 16 | Volume block 0: superblock |
 | 16 + `bitmap_start` | Free space bitmap |
 | 16 + `inode_table_start` | Inode table |
 | 16 + `data_start` | Data blocks |
 
-The boot area (LBA 0 to 15, 8 KiB) is outside the file system. A copy of it is stored as the file `sys/boot/udbl`, so that the loader can be updated from inside the system.
+The boot area (LBA 0 to 15, 8 KiB) is outside the file system. A copy of it is stored as the file `sys/boot/monlod`, so that the loader can be updated from inside the system.
 
 Layout produced by `mkudfs`:
 
@@ -129,9 +129,9 @@ The namespace part of a path (`disk:0//`) is outside UDFS. How namespaces map to
 
 ## Requirements for booting
 
-UDBL reads `sys/boot/kernel` from the volume at LBA 16 of the boot disk. For this to work:
+Monlod reads `sys/boot/kernel` from the volume at LBA 16 of the boot disk. For this to work:
 
-- The superblock is valid for UDBL (magic, version 1, block size 512).
+- The superblock is valid for Monlod (magic, version 1, block size 512).
 - The kernel is a regular file of at most 896 sectors (458752 bytes).
 - The kernel uses at most 4 extents.
 - The volume is reachable with BIOS CHS addressing, which limits the read area to cylinder 1023.
@@ -160,7 +160,7 @@ Both tools are in `tools/` and are built by `make`. They assume a little-endian 
 
 `make check` builds the image, runs `udfsck` and compares `sys/boot/kernel` inside the image with `build/kernel.bin`.
 
-The tree stored in the image is built by the Makefile from the decided layout: `sys/boot`, `bin`, `usr/root`, `conf`, `tmp` and `dev`, plus the files `sys/boot/kernel` and `sys/boot/udbl`. The file `sys/boot/boot.cfg` is not created because its format is **OPEN**.
+The tree stored in the image is built by the Makefile from the decided layout: `sys/boot`, `bin`, `usr/root`, `conf`, `tmp` and `dev`, plus the files `sys/boot/kernel` and `sys/boot/monlod`. The file `sys/boot/boot.cfg` is not created because its format is **OPEN**.
 
 ## Open items
 
@@ -174,5 +174,5 @@ The tree stored in the image is built by the Makefile from the decided layout: `
 | Block sizes other than 512 | OPEN |
 | Indirect extents for fragmented large files | OPEN |
 | Partitions and several volumes on one disk | OPEN |
-| FAT compatibility | OPEN |
-| Online writing: allocation policy, directory growth and deletion in UDK | OPEN |
+| Reading other file systems | OPEN |
+| Online writing: allocation policy, directory growth and deletion in Eclips Kernel | OPEN |

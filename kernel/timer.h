@@ -1,5 +1,5 @@
-#ifndef UDK_TIMER_H
-#define UDK_TIMER_H
+#ifndef ECLIPS_TIMER_H
+#define ECLIPS_TIMER_H
 
 #include <stdint.h>
 

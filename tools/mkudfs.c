@@ -203,7 +203,7 @@ int main(int argc, char **argv)
     const char *root_dir = NULL;
     const char *output = NULL;
     const char *boot_area = NULL;
-    const char *label = "UDOS";
+    const char *label = "EclipsOS";
     unsigned long size_kib = 1440;
 
     for (int i = 1; i < argc; i++) {

@@ -72,7 +72,7 @@ boot_drive:
     .byte 0
 
 msg_disk_error:
-    .asciz "UDBL: DISK READ ERROR"
+    .asciz "MONLOD: DISK READ ERROR"
 
 .org 510
 .word 0xAA55

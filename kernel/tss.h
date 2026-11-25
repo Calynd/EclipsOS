@@ -1,5 +1,5 @@
-#ifndef UDK_TSS_H
-#define UDK_TSS_H
+#ifndef ECLIPS_TSS_H
+#define ECLIPS_TSS_H
 
 #include <stdint.h>
 

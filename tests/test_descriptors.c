@@ -4,7 +4,7 @@
 #include "syscall.h"
 #include "tss.h"
 #include "uaccess.h"
-#include "udk_abi.h"
+#include "eclips_abi.h"
 
 static int failures;
 
@@ -51,16 +51,16 @@ int main(void)
     check("tss descriptor with a large limit", ((descriptor[0] >> 48) & 0xF) == 0xF && (descriptor[0] & 0xFFFF) == 0xFFFF);
     check("tss descriptor type", ((descriptor[0] >> 40) & 0xFF) == 0x89);
 
-    check("user code base is page aligned", (UDK_USER_CODE_BASE & 0xFFF) == 0);
-    check("user code base is in the user half", UDK_USER_CODE_BASE < UACCESS_USER_LIMIT);
-    check("user stack top is page aligned", (UDK_USER_STACK_TOP & 0xFFF) == 0);
-    check("user stack top is in the user half", UDK_USER_STACK_TOP < UACCESS_USER_LIMIT);
-    check("user stack size is page aligned", (UDK_USER_STACK_SIZE & 0xFFF) == 0);
-    check("user stack is above the code", UDK_USER_STACK_TOP - UDK_USER_STACK_SIZE > UDK_USER_CODE_BASE);
+    check("user code base is page aligned", (ECLIPS_USER_CODE_BASE & 0xFFF) == 0);
+    check("user code base is in the user half", ECLIPS_USER_CODE_BASE < UACCESS_USER_LIMIT);
+    check("user stack top is page aligned", (ECLIPS_USER_STACK_TOP & 0xFFF) == 0);
+    check("user stack top is in the user half", ECLIPS_USER_STACK_TOP < UACCESS_USER_LIMIT);
+    check("user stack size is page aligned", (ECLIPS_USER_STACK_SIZE & 0xFFF) == 0);
+    check("user stack is above the code", ECLIPS_USER_STACK_TOP - ECLIPS_USER_STACK_SIZE > ECLIPS_USER_CODE_BASE);
 
-    check("syscall numbers are distinct", UDK_SYS_DEBUG_WRITE != UDK_SYS_EXIT && UDK_SYS_EXIT != UDK_SYS_TIME &&
-                                              UDK_SYS_DEBUG_WRITE != UDK_SYS_TIME);
-    check("error codes are negative", UDK_ERR_NO_SYSCALL < 0 && UDK_ERR_BAD_ADDRESS < 0 && UDK_ERR_INVALID < 0);
+    check("syscall numbers are distinct", ECLIPS_SYS_DEBUG_WRITE != ECLIPS_SYS_EXIT && ECLIPS_SYS_EXIT != ECLIPS_SYS_TIME &&
+                                              ECLIPS_SYS_DEBUG_WRITE != ECLIPS_SYS_TIME);
+    check("error codes are negative", ECLIPS_ERR_NO_SYSCALL < 0 && ECLIPS_ERR_BAD_ADDRESS < 0 && ECLIPS_ERR_INVALID < 0);
 
     if (failures == 0)
         printf("test_descriptors: all checks passed\n");

@@ -1,4 +1,4 @@
-#include "udos.h"
+#include "eclips.h"
 
 static unsigned long string_length(const char *text)
 {
@@ -11,7 +11,7 @@ static unsigned long string_length(const char *text)
 
 static void write_string(const char *text)
 {
-    udos_debug_write(text, string_length(text));
+    eclips_debug_write(text, string_length(text));
 }
 
 static void write_decimal(unsigned long value)
@@ -28,7 +28,7 @@ static void write_decimal(unsigned long value)
 
     while (count > 0)
         text[length++] = digits[--count];
-    udos_debug_write(text, length);
+    eclips_debug_write(text, length);
 }
 
 __attribute__((noreturn, section(".text.start")))
@@ -46,7 +46,7 @@ void _start(void)
 
     write_string("USER: HELLO FROM USER MODE\n");
     write_string("USER: UPTIME TICKS ");
-    write_decimal((unsigned long)udos_time());
+    write_decimal((unsigned long)eclips_time());
     write_string("\n");
-    udos_exit(0);
+    eclips_exit(0);
 }

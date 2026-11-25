@@ -1,5 +1,5 @@
-#ifndef UDK_SYSCALL_H
-#define UDK_SYSCALL_H
+#ifndef ECLIPS_SYSCALL_H
+#define ECLIPS_SYSCALL_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef UDK_MSR_H
-#define UDK_MSR_H
+#ifndef ECLIPS_MSR_H
+#define ECLIPS_MSR_H
 
 #include <stdint.h>
 

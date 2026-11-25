@@ -1,5 +1,5 @@
-#ifndef UDK_UACCESS_H
-#define UDK_UACCESS_H
+#ifndef ECLIPS_UACCESS_H
+#define ECLIPS_UACCESS_H
 
 #include <stddef.h>
 #include <stdint.h>

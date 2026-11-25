@@ -1,5 +1,5 @@
-#ifndef UDK_INTERRUPT_H
-#define UDK_INTERRUPT_H
+#ifndef ECLIPS_INTERRUPT_H
+#define ECLIPS_INTERRUPT_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef UDK_IO_H
-#define UDK_IO_H
+#ifndef ECLIPS_IO_H
+#define ECLIPS_IO_H
 
 #include <stdint.h>
 

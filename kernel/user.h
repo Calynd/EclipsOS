@@ -1,5 +1,5 @@
-#ifndef UDK_USER_H
-#define UDK_USER_H
+#ifndef ECLIPS_USER_H
+#define ECLIPS_USER_H
 
 #include <stdint.h>
 

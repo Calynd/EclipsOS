@@ -1,5 +1,5 @@
-#ifndef UDOS_UDFS_H
-#define UDOS_UDFS_H
+#ifndef ECLIPSOS_UDFS_H
+#define ECLIPSOS_UDFS_H
 
 #include <stddef.h>
 #include <stdint.h>

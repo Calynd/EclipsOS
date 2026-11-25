@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "gdt.h"
 #include "memory.h"
-#include "udk_abi.h"
+#include "eclips_abi.h"
 #include "user.h"
 #include "vga.h"
 #include "vm.h"
@@ -28,8 +28,8 @@ static void release_page(uint64_t address)
 static void release_user_memory(void)
 {
     for (unsigned int i = 0; i < mapped_code_pages; i++)
-        release_page(UDK_USER_CODE_BASE + (uint64_t)i * VMM_PAGE_SIZE);
-    for (uint64_t address = UDK_USER_STACK_TOP - UDK_USER_STACK_SIZE; address < UDK_USER_STACK_TOP;
+        release_page(ECLIPS_USER_CODE_BASE + (uint64_t)i * VMM_PAGE_SIZE);
+    for (uint64_t address = ECLIPS_USER_STACK_TOP - ECLIPS_USER_STACK_SIZE; address < ECLIPS_USER_STACK_TOP;
          address += VMM_PAGE_SIZE)
         release_page(address);
     mapped_code_pages = 0;
@@ -56,8 +56,8 @@ int user_run(void (*after_exit)(void))
 {
     size_t size = (size_t)(user_hello_end - user_hello_start);
     unsigned int pages = (unsigned int)((size + VMM_PAGE_SIZE - 1) / VMM_PAGE_SIZE);
-    uint64_t stack_top = UDK_USER_STACK_TOP;
-    uint64_t entry = UDK_USER_CODE_BASE;
+    uint64_t stack_top = ECLIPS_USER_STACK_TOP;
+    uint64_t entry = ECLIPS_USER_CODE_BASE;
 
     if (pages == 0 || pages > USER_CODE_PAGES_MAX)
         return -1;
@@ -66,13 +66,13 @@ int user_run(void (*after_exit)(void))
     for (unsigned int i = 0; i < pages; i++) {
         size_t offset = (size_t)i * VMM_PAGE_SIZE;
 
-        if (map_fresh_page(UDK_USER_CODE_BASE + offset, VMM_USER, user_hello_start + offset, size - offset) != 0) {
+        if (map_fresh_page(ECLIPS_USER_CODE_BASE + offset, VMM_USER, user_hello_start + offset, size - offset) != 0) {
             release_user_memory();
             return -1;
         }
         mapped_code_pages++;
     }
-    for (uint64_t address = UDK_USER_STACK_TOP - UDK_USER_STACK_SIZE; address < UDK_USER_STACK_TOP;
+    for (uint64_t address = ECLIPS_USER_STACK_TOP - ECLIPS_USER_STACK_SIZE; address < ECLIPS_USER_STACK_TOP;
          address += VMM_PAGE_SIZE) {
         if (map_fresh_page(address, VMM_USER | VMM_WRITE, NULL, 0) != 0) {
             release_user_memory();
@@ -96,7 +96,7 @@ int user_run(void (*after_exit)(void))
 
 void user_exit(int64_t code)
 {
-    vga_puts("UDK: USER PROGRAM EXITED WITH CODE ");
+    vga_puts("KERNEL: USER PROGRAM EXITED WITH CODE ");
     if (code < 0) {
         vga_putc('-');
         vga_put_dec((uint64_t)(-code));
@@ -106,7 +106,7 @@ void user_exit(int64_t code)
     vga_puts("\n");
 
     release_user_memory();
-    vga_puts("UDK: USER MEMORY RELEASED, ");
+    vga_puts("KERNEL: USER MEMORY RELEASED, ");
     vga_put_dec(memory_free_frames());
     vga_puts(" FRAMES FREE\n");
 
